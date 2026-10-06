@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using ApiKeyVault.Cli.Services;
+using ApiKeyVault.Core;
 using ApiKeyVault.Core.Cryptography;
 using ApiKeyVault.Core.Storage;
 using ApiKeyVault.Core.Vault;
@@ -25,7 +26,7 @@ public sealed class InitSettings : GlobalSettings
 
 public sealed class InitCommand : Command<InitSettings>
 {
-    public override int Execute(CommandContext context, InitSettings settings)
+    public override int Execute(CommandContext context, InitSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -183,7 +184,7 @@ public sealed class JoinSettings : GlobalSettings
 
 public sealed class JoinCommand : Command<JoinSettings>
 {
-    public override int Execute(CommandContext context, JoinSettings settings)
+    public override int Execute(CommandContext context, JoinSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -249,7 +250,7 @@ public sealed class RecoverSettings : GlobalSettings
 
 public sealed class RecoverCommand : Command<RecoverSettings>
 {
-    public override int Execute(CommandContext context, RecoverSettings settings)
+    public override int Execute(CommandContext context, RecoverSettings settings, CancellationToken cancellationToken)
     {
         try
         {

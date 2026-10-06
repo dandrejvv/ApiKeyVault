@@ -54,7 +54,7 @@ public sealed class AddSettings : GlobalSettings
 
 public sealed class AddCommand : Command<AddSettings>
 {
-    public override int Execute(CommandContext context, AddSettings settings)
+    public override int Execute(CommandContext context, AddSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -214,7 +214,7 @@ public sealed class EditSettings : GlobalSettings
 
 public sealed class EditCommand : Command<EditSettings>
 {
-    public override int Execute(CommandContext context, EditSettings settings)
+    public override int Execute(CommandContext context, EditSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -285,7 +285,7 @@ public sealed class RotateSettings : GlobalSettings
 
 public sealed class RotateCommand : Command<RotateSettings>
 {
-    public override int Execute(CommandContext context, RotateSettings settings)
+    public override int Execute(CommandContext context, RotateSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -357,7 +357,7 @@ public sealed class RemoveSettings : GlobalSettings
 
 public sealed class RemoveCommand : Command<RemoveSettings>
 {
-    public override int Execute(CommandContext context, RemoveSettings settings)
+    public override int Execute(CommandContext context, RemoveSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -410,7 +410,7 @@ public sealed class TestSettings : GlobalSettings
 
 public sealed class TestCommand : Command<TestSettings>
 {
-    public override int Execute(CommandContext context, TestSettings settings)
+    public override int Execute(CommandContext context, TestSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -493,7 +493,7 @@ public sealed class TestCommand : Command<TestSettings>
 
 public sealed class StatusCommand : Command<GlobalSettings>
 {
-    public override int Execute(CommandContext context, GlobalSettings settings)
+    public override int Execute(CommandContext context, GlobalSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -585,7 +585,7 @@ public sealed class ImportSettings : GlobalSettings
 
 public sealed class ImportCommand : Command<ImportSettings>
 {
-    public override int Execute(CommandContext context, ImportSettings settings)
+    public override int Execute(CommandContext context, ImportSettings settings, CancellationToken cancellationToken)
     {
         try
         {

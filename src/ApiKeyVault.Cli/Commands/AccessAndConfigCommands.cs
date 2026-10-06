@@ -3,6 +3,7 @@ using System.Text.Json;
 using ApiKeyVault.Cli.Services;
 using ApiKeyVault.Core.Cryptography;
 using ApiKeyVault.Core.Storage;
+using ApiKeyVault.Core.Vault;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -10,7 +11,7 @@ namespace ApiKeyVault.Cli.Commands;
 
 public sealed class AccessListCommand : Command<GlobalSettings>
 {
-    public override int Execute(CommandContext context, GlobalSettings settings)
+    public override int Execute(CommandContext context, GlobalSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -79,7 +80,7 @@ public sealed class AccessRemoveSettings : GlobalSettings
 
 public sealed class AccessRemoveCommand : Command<AccessRemoveSettings>
 {
-    public override int Execute(CommandContext context, AccessRemoveSettings settings)
+    public override int Execute(CommandContext context, AccessRemoveSettings settings, CancellationToken cancellationToken)
     {
         if (settings.DeviceNames.Length == 0)
         {
@@ -146,7 +147,7 @@ public sealed class AccessRenameSettings : GlobalSettings
 
 public sealed class AccessRenameCommand : Command<AccessRenameSettings>
 {
-    public override int Execute(CommandContext context, AccessRenameSettings settings)
+    public override int Execute(CommandContext context, AccessRenameSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -175,7 +176,7 @@ public sealed class AccessRenameCommand : Command<AccessRenameSettings>
 
 public sealed class PassphraseChangeCommand : Command<GlobalSettings>
 {
-    public override int Execute(CommandContext context, GlobalSettings settings)
+    public override int Execute(CommandContext context, GlobalSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -232,7 +233,7 @@ public sealed class PassphraseChangeCommand : Command<GlobalSettings>
 
 public sealed class RecoveryNewCommand : Command<GlobalSettings>
 {
-    public override int Execute(CommandContext context, GlobalSettings settings)
+    public override int Execute(CommandContext context, GlobalSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -305,7 +306,7 @@ public sealed class ConfigSettings : GlobalSettings
 
 public sealed class ConfigCommand : Command<ConfigSettings>
 {
-    public override int Execute(CommandContext context, ConfigSettings settings)
+    public override int Execute(CommandContext context, ConfigSettings settings, CancellationToken cancellationToken)
     {
         var stateManager = new LocalStateManager();
         var state = stateManager.Load();

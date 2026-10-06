@@ -23,7 +23,7 @@ public sealed class ProfileSettings : GlobalSettings
 
 public sealed class ProfileCommand : Command<ProfileSettings>
 {
-    public override int Execute(CommandContext context, ProfileSettings settings)
+    public override int Execute(CommandContext context, ProfileSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -159,7 +159,7 @@ public sealed class ProfileCommand : Command<ProfileSettings>
 
 public sealed class ShellCommand : Command<GlobalSettings>
 {
-    public override int Execute(CommandContext context, GlobalSettings settings)
+    public override int Execute(CommandContext context, GlobalSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -188,22 +188,22 @@ public sealed class ShellCommand : Command<GlobalSettings>
                 if (cmd == "list" || cmd == "ls")
                 {
                     var listCmd = new ListCommand();
-                    listCmd.Execute(context, new ListSettings { VaultPath = session.VaultPath });
+                    listCmd.Execute(context, new ListSettings { VaultPath = session.VaultPath }, cancellationToken);
                 }
                 else if (cmd == "find" && parts.Length > 1)
                 {
                     var findCmd = new FindCommand();
-                    findCmd.Execute(context, new FindSettings { VaultPath = session.VaultPath, Query = parts[1] });
+                    findCmd.Execute(context, new FindSettings { VaultPath = session.VaultPath, Query = parts[1] }, cancellationToken);
                 }
                 else if (cmd == "get" && parts.Length > 1)
                 {
                     var getCmd = new GetCommand();
-                    getCmd.Execute(context, new GetSettings { VaultPath = session.VaultPath, KeyAddress = parts[1] });
+                    getCmd.Execute(context, new GetSettings { VaultPath = session.VaultPath, KeyAddress = parts[1] }, cancellationToken);
                 }
                 else if (cmd == "status")
                 {
                     var statusCmd = new StatusCommand();
-                    statusCmd.Execute(context, new GlobalSettings { VaultPath = session.VaultPath });
+                    statusCmd.Execute(context, new GlobalSettings { VaultPath = session.VaultPath }, cancellationToken);
                 }
                 else
                 {
