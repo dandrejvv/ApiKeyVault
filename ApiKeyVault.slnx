@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ApiKeyVault.Cli/ApiKeyVault.Cli.csproj" />
+    <Project Path="src/ApiKeyVault.Core/ApiKeyVault.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ApiKeyVault.Cli.Tests/ApiKeyVault.Cli.Tests.csproj" />
+    <Project Path="tests/ApiKeyVault.Core.Tests/ApiKeyVault.Core.Tests.csproj" />
+  </Folder>
+</Solution>
