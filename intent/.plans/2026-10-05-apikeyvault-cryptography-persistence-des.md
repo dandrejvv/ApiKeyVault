@@ -4,7 +4,7 @@
 
 # ApiKeyVault — Cryptography & Persistence Design
 
-> **Status:** Agreed in design discussion, 2026-10-05. Scope: how the vault is encrypted, unlocked, shared between devices via OneDrive, and stored on each device.
+> **Status:** Agreed in design discussion, 2026-10-05; revised 2026-10-06 after review. Scope: how the vault is encrypted, unlocked, shared between devices via OneDrive, and stored on each device.
 
 ## 1. Context
 
@@ -12,11 +12,16 @@ API secret keys (OpenAI, Anthropic, OpenRouter, Azure OpenAI, Gemini, Google Sti
 
 - lives in a OneDrive folder so every personal machine sees the same vault;
 - opens **without a password prompt** on a trusted device, using the OS credential store;
-- can always be recovered with a **master passphrase** or a **printed recovery key**;
+- can always be recovered with a **master passphrase** or a **recovery code**, both kept in my password manager;
 - lets a lost or retired device be **cut off** without touching any other device;
 - refuses to open if anyone has **tampered** with the file.
 
 Both the CLI (`akv`) and the desktop UI use the same core library, and therefore the same design.
+
+**Scope and principle.**
+- This is a vault for **one person and their own devices**. It is not a team or enterprise vault.
+- Real holes are plugged with simple mechanisms.
+- Threats that need an attacker who **already had access** (a former device, or an old passphrase) **and** can write to my OneDrive are accepted, not engineered around (§3, §12). The remedy for those is to rotate the API keys with each provider.
 
 ## 2. Glossary
 
@@ -28,6 +33,7 @@ Both the CLI (`akv`) and the desktop UI use the same core library, and therefore
 | **Private key** | The key that opens one padlock | A recipient's X25519 **private** key, never stored in the vault file |
 | **Seal** | Tamper-evident seal over the whole file | AEAD authentication tag over header + payload |
 | **Vault identity secret** | Proof that this is *my* vault, not a look-alike | Random 256-bit value inside the payload, pinned on each device |
+| **Identity tag** | The same proof, for unlocks with the passphrase or recovery code | HMAC over the identity secret, keyed from the passphrase or recovery code (§7.2) |
 
 ## 3. Threat model
 
@@ -38,14 +44,14 @@ Both the CLI (`akv`) and the desktop UI use the same core library, and therefore
 | A device is lost or retired | ✅ | Remove its lockbox and rotate the vault key (§6.6). |
 | Someone edits or corrupts the vault file | ✅ detected | The seal (§7.1). Restore from OneDrive version history. |
 | Someone adds their own padlock to the file | ✅ detected | The seal covers the header (§7.1). |
-| Someone swaps in a complete look-alike vault | ✅ detected | Identity pinning and key-history pinning on enrolled devices, plus an identity tag that only the passphrase or recovery code can produce, checked on every other unlock (§7.2). |
-| Someone serves an older genuine copy of the file (rollback) | ⚠️ warned | Save counter, key history and revoked-padlock list (§7.3). |
-| Someone plants a file in the vault folder (as a conflict copy, or as `vault.akv` with the real one renamed) | ✅ | Every file must pass the identity checks. A file that isn't provably current changes nothing without confirmation, except to take access away. That means its key history must reach this device's newest key and contain every other file's history (§9.3). |
-| An old passphrase or recovery code leaks after it was changed | ⚠️ partly | Every change of owner rotates the vault key (§6.5). Copies saved **before** the change (version history, backups) still open with the old secret and show the data as it was then. See the last-but-one row for what a holder of an old secret can still do. |
+| Someone builds a look-alike vault from my public padlocks | ✅ detected | Enrolled devices check the pinned identity secret. Passphrase and recovery unlocks check the identity tag (§7.2). |
+| Someone serves an older genuine copy of the file (rollback) | ⚠️ warned | Save counter and the list of removed devices (§7.3). |
+| An old passphrase or recovery code leaks after it was changed | ⚠️ partly | Every change of owner rotates the vault key (§6.5), so the old secret doesn't open the current vault. Copies saved **before** the change (version history, backups) still open with it and show the data as it was then. |
+| Someone learns my passphrase or recovery code and adds their own device | ⚠️ visible | The device shows up in the device list. Remove it (§6.6) and change the passphrase or recovery code (§6.5). |
 | Another OS user on the same machine | ✅ | The OS store is per user. |
 | Malware running as **me** | ❌ (accepted) | With Tier 1 storage, it can read the device key, just as it can read Git or Azure CLI credentials. Tier 2 (§8.2) narrows this. |
-| **Anyone who ever held an owner secret** (a removed device, or an old passphrase or recovery code plus an old copy) **and** can write to my OneDrive | ⚠️ partly (accepted) | They know the identity secret, which never rotates (§12). Devices that are up to date still reject their look-alike vault, and refuse to merge their changes silently, through the key history (§7.2, §9.3). A device with no local state for this vault (joining afresh), or one that was offline through the change, can be fooled, and keys added there afterwards are captured. They can also lock devices out by planting revocations, which apply silently; a locked-out device re-enrols with the passphrase. Rotate the actual API keys with each provider, and treat an unexpectedly emptied or changed vault as a compromise. |
-| Forgot the passphrase **and** lost every device **and** the recovery key | ❌ by design | Nobody can open the vault. That is the point. |
+| **Anyone who once held an owner secret** (a removed device, or an old passphrase plus an old copy) **and** can write to my OneDrive | ❌ (accepted) | They know the identity secret, so they can plant a vault my devices would open, and read keys added to it afterwards. Rotate the actual API keys with each provider, and treat an unexpectedly changed vault as a compromise. Defending this needs a key history (§13), which is overkill for a single-user vault. |
+| Forgot the passphrase **and** lost every device **and** the recovery code | ❌ by design | Nobody can open the vault. That is the point. |
 
 ## 4. Key hierarchy
 
@@ -57,7 +63,7 @@ flowchart TB
 
   subgraph VaultFile[vault.akv on OneDrive]
     direction TB
-    H[Header: vault id, KDF params, padlocks + lockboxes]:::file
+    H[Header: vault id, padlocks + lockboxes]:::file
     P[Payload: entries, metadata, identity secret, save counter]:::file
   end
 
@@ -67,8 +73,8 @@ flowchart TB
   LB3[Lockbox: DESKTOP-01]:::file -->|contains copy of| VK
   LB4[Lockbox: LAPTOP-02]:::file -->|contains copy of| VK
 
-  PP[Passphrase - in my head]:::owner -->|Argon2id derives private key| LB1
-  RK[Recovery key - printed]:::owner -->|is the private key| LB2
+  PP[Passphrase - password manager]:::owner -->|Argon2id derives private key| LB1
+  RK[Recovery code - password manager]:::owner -->|HKDF derives private key| LB2
   D1[DESKTOP-01 private key - Windows Credential Manager]:::owner --> LB3
   D2[LAPTOP-02 private key - OS credential store]:::owner --> LB4
 ```
@@ -91,7 +97,8 @@ Rules:
 | Payload encryption + seal | **XChaCha20-Poly1305** (AEAD) | 192-bit random nonce, generated fresh on **every** save |
 | Owner key pairs (padlocks) | **X25519** | Device, passphrase and recovery owners all use X25519 |
 | Lockbox key derivation | **HKDF-SHA256** | Derives the wrap key from the X25519 shared secret |
-| Passphrase → private key | **Argon2id** | Parameters stored in the header, tunable over time |
+| Passphrase → private key | **Argon2id** | Parameters stored in the passphrase lockbox |
+| Identity tag | **HMAC-SHA256** | §7.2 |
 | Randomness | OS CSPRNG | `RandomNumberGenerator` / libsodium `randombytes` |
 
 ### 5.2 Creating a lockbox (locking a copy of the vault key to a padlock)
@@ -115,30 +122,45 @@ lockbox            = { lockbox_id, kind, recipient_pub, eph_pub, nonce, wrapped_
 
 Opening a lockbox is the mirror image, using the owner's `recipient_priv` with `eph_pub`. The lockbox has its own authentication tag, so a tampered lockbox fails outright.
 
-A `lockbox_id` belongs to one owner for life: rotation (§6.6) re-wraps the new vault key under the **same** id, and a replaced owner (new passphrase, new recovery code, re-enrolled device) gets a **new** id while the old one is revoked. Merges (§9.3) rely on this.
+A `lockbox_id` belongs to one owner for life. Rotation (§6.6) re-wraps the new vault key under the **same** id. A replaced owner (new passphrase, new recovery code, re-enrolled device) gets a **new** id, and the old one is revoked.
 
 ### 5.3 The three kinds of owner
 
 | Lockbox kind | Where the private key comes from |
 |---|---|
 | **Passphrase** | `Argon2id(passphrase, salt, m, t, p = 1)` produces 64 bytes: the first 32 are the X25519 private key, the last 32 are the identity-tag key (§7.2). Salt and parameters are stored in the passphrase lockbox. |
-| **Recovery** | A 128-bit random code generated at vault creation, shown **once** as 26 Crockford Base32 characters plus a 2-character checksum, in groups of 4, and never stored. `HKDF-SHA256(code, info = "akv/recovery/v1")` expands it to 64 bytes, split the same way as the passphrase's. |
+| **Recovery** | A 128-bit random code generated at vault creation, shown **once** as 26 Crockford Base32 characters plus a 2-character checksum, in groups of 4, and never stored by ApiKeyVault (it goes in the password manager). `HKDF-SHA256(code, info = "akv/recovery/v1")` expands it to 64 bytes, split the same way as the passphrase's. |
 | **Device** | 32 random bytes generated when the device enrols, stored only in that device's OS credential store (§8). Devices have no identity tag; they pin the identity secret instead (§7.2). |
 
-There is exactly **one** passphrase lockbox and **one** recovery lockbox at any time.
+**Who can be removed:**
+
+| Owner | Change it | Remove it |
+|---|---|---|
+| Passphrase | ✅ Replace (§6.5) | ❌ Never |
+| Recovery code | ✅ Replace (§6.5) | ❌ Never |
+| Other devices | ✅ Rename, replace on re-enrolment (§6.4) | ✅ Yes (§6.6) |
+| **This device** | ✅ Rename | ❌ Never from itself. Remove it from another device |
+
+- There is exactly **one** passphrase lockbox and **one** recovery lockbox at any time. They are your way back in when devices are lost, so they can only ever be replaced, never removed.
+- **This device** is the one whose lockbox id is in this machine's OS credential store for this vault (§8.1). That's the key it "logged in" with. It is recognised the same way even if this session was opened with the passphrase. A machine that isn't enrolled has no "this device".
+- The core enforces these rules on **every** save, whatever asked for it: the UI, the CLI, *Accept as current* or a merge (§9.3).
+  - It refuses any operation that would leave the vault without a passphrase lockbox or without a recovery lockbox.
+  - It refuses any request **made on this device** to remove this device's lockbox. A removal made on another device still applies when this device next opens or merges the vault (§6.6). That's how a lost laptop gets cut off.
+- There are no per-device permissions: every owner has full access.
 
 ### 5.4 Argon2id parameters
 
 - **Parallelism is 1**, because libsodium (and therefore NSec, §11) only supports `p = 1`.
-- The starting point is `m = 64 MiB, t = 3, p = 1`. At vault creation, only the **iterations** are tuned upward until a derivation takes about **0.5–1 s** on the creating machine. Memory stays at 64 MiB, so a vault created on a powerful desktop still opens on a small headless machine (UC-03).
-- The parameters are stored in the passphrase lockbox. They can be raised later with the same passphrase. That changes the padlock, so the passphrase lockbox gets a new id and the old one is revoked, just as for a passphrase change. It is the one replacement that needs **no** key rotation, because the same passphrase opened the old lockbox, so nothing new becomes readable to anyone.
+- The starting point is `m = 64 MiB, t = 3, p = 1`.
+- At vault creation, only the **iterations** are tuned upward, until a derivation takes about **0.5–1 s** on the creating machine. Memory stays at 64 MiB, so a vault created on a powerful desktop still opens on a small headless machine.
+- The parameters can be raised later with the same passphrase. This gives the passphrase lockbox a new id (the old one is revoked). It is the one replacement that needs **no** key rotation, because nobody new can open anything.
 - **Bounds are enforced on read:** `m` outside 19–256 MiB, `t` outside 2–64, or `p ≠ 1` are rejected before Argon2 runs. This stops a tampered header from causing a memory-exhaustion hang, since the seal can't be checked until after a lockbox is opened.
 
 ## 6. Operations
 
 ### 6.1 Create a vault
 
-1. Generate the vault key, vault id, vault identity secret, recovery private key and this device's private key.
+1. Generate the vault key, vault id, vault identity secret, recovery code and this device's private key.
 2. Ask for the passphrase (entered twice) and derive the passphrase private key (§5.3).
 3. Create three lockboxes: passphrase and recovery (each with its identity tag, §7.2), and this device.
 4. Encrypt and seal the payload (§7.1), then write the file atomically (§9.2).
@@ -160,37 +182,36 @@ sequenceDiagram
     App-->>App: STOP - tampered, nothing decrypted
   else seal valid
     App->>App: check identity secret matches pinned value
-    App->>App: merge any conflict copies (§9.3), judging every file by its key history (§7.2)
-    App->>App: on the result: pinned key commitment present, save counter not below last seen, no revoked padlock (§7.3)
+    App->>App: merge any conflict copies (§9.3)
+    App->>App: on the result: save counter not below last seen, no revoked padlock (§7.3)
     App-->>App: vault unlocked
   end
 ```
 
-### 6.3 Unlock with the passphrase or recovery key
+### 6.3 Unlock with the passphrase or recovery code
 
 This is the same flow as §6.2, except the private key comes from Argon2id(passphrase) or from the typed-in recovery code. It is used on a device that hasn't been enrolled, or as a fallback where no OS store is available.
 
-There is no pinned identity secret to compare with here, so after the seal check the lockbox's **identity tag** is verified instead (§7.2). A mismatch is treated as tampering (UC-24), and nothing from that file is trusted or pinned. If this device's local state already holds a key-history pin for this vault, for example a headless machine or a device whose OS store was lost, the key-history check (§7.2) applies too, exactly as in §6.2.
-
+There is no pinned identity secret to compare with, so after the seal check the lockbox's **identity tag** is checked instead (§7.2). A mismatch is treated as tampering (UC-24).
 ### 6.4 Enrol a new device
 
 1. Unlock once with the passphrase (§6.3).
-2. Generate a device private key and add a new lockbox for it.
+2. Generate a device private key and add a new lockbox for it, with the device's name and the date in the device list (§9.1).
 3. Device names are unique. If a device lockbox with the **same machine name** already exists (for example after an OS reinstall), offer to replace it, showing when it was last used. Replacing removes the old lockbox, so it rotates the vault key (§6.6).
-4. Before saving anything: if this device already has a **different** identity secret pinned for this vault id, stop and report tampering. A pin is never silently replaced.
-5. Save the file, then store the device secrets in the OS store, and pin the latest key commitment (§7.2).
+4. If this device already has a **different** identity secret pinned for this vault id, stop and report tampering. A pin is never silently replaced.
+5. Save the file, then store the device secrets in the OS store.
 
 ### 6.5 Change the passphrase or recover
 
-- **Proof required:** any **one** of the current passphrase, the recovery code, or an OS re-authentication (Windows Hello, or the Windows credential prompt where Hello isn't set up; macOS and Linux equivalents to confirm). Being unlocked by the device key alone isn't enough.
-- **Change passphrase:** derive a new passphrase key with a new salt, and replace the passphrase lockbox (new lockbox id and new identity tag; the old id is revoked). Then **rotate the vault key** (§6.6).
+- **Proof required:** any **one** of the current passphrase, the recovery code, or an OS re-authentication (Windows Hello, or the Windows sign-in prompt where Hello isn't set up). Being unlocked by the device key alone isn't enough.
+- **Change passphrase:** derive a new passphrase key with a new salt. Replace the passphrase lockbox: it gets a new id and a new identity tag, and the old id is revoked. Then **rotate the vault key** (§6.6).
 - **Forgot the passphrase:**
   - on a trusted device, prove yourself with an OS re-authentication, then change the passphrase;
   - with no trusted device, unlock with the recovery code, then change the passphrase.
 - **Regenerate the recovery code:** replace the recovery lockbox in the same way, rotate the vault key, then show the new code once.
-- **Limitation:** copies of the file saved *before* the change (OneDrive version history, backups) still open with the old passphrase or code, and show the data as it was at that time. If the old secret may be known to someone else, rotate the API keys that were stored then.
+- **Limitation:** copies of the file saved *before* the change (OneDrive version history, backups) still open with the old passphrase or code, and show the data as it was at that time.
 
-### 6.6 Remove a device (always rotates the vault key)
+### 6.6 Remove devices (always rotates the vault key)
 
 ```mermaid
 flowchart LR
@@ -201,36 +222,53 @@ flowchart LR
   A[Unlocked device has vault key K1]:::existing --> B[Generate new vault key K2]:::added
   B --> C[Re-encrypt payload with K2]:::added
   C --> D[Re-wrap K2 for every REMAINING padlock, same lockbox ids]:::added
-  D --> E[Discard all old lockboxes; add the removed padlock to the revoked list]:::removed
+  D --> E[Discard all old lockboxes; add the removed padlocks to the revoked list]:::removed
   E --> F[Save - OneDrive syncs]:::existing
 ```
 
+- **Several devices can be removed in one go**, with one rotation.
+- Only **other** devices' lockboxes can be removed (§5.3). To retire the machine you're on, remove it from another device, or with the passphrase on another machine.
+- Removing a device doesn't need anything from it: it can be offline, lost or broken.
 - Old lockboxes are **discarded unopened**. New ones are created using the public padlocks, so no other device's secret, passphrase or recovery code is needed. Identity tags are carried over unchanged, because the identity secret doesn't change.
 - Other devices notice nothing: they open their (new) lockbox with their unchanged private key and find K2 inside.
 - The removed padlock goes on the payload's append-only **revoked** list, which each device mirrors locally (§7.3).
-- **Every** operation that removes or replaces an owner uses this flow: removing a device, replacing a device on re-enrolment, changing the passphrase, regenerating the recovery code, *Accept as current* (§7.3), and every merge that drops a lockbox (§9.3). The only exception is re-tuning the passphrase's Argon2id parameters (§5.4).
-- Each rotation appends the new key's commitment to the key history (§7.2).
-- **Open sessions:** a session unlocked with a device key re-reads that key from the OS store and opens its re-wrapped lockbox. A session unlocked with the passphrase or recovery code (`akv shell`, a UI opened with the passphrase) must ask for it again. A session that can't open the current file **never saves**.
-- **Limitation:** rotation protects the vault from this point on. It can't take back what the removed device could already read, and it doesn't change the identity secret, which the removed device knows (§3). The key history stops that device fooling enrolled devices that saw the rotation, but not a device joining afresh. If that device was compromised, rotate the affected API keys with each provider.
+- **Every** operation that removes or replaces an owner uses this flow, with one exception (re-tuning the passphrase's Argon2id parameters, §5.4). The operations are:
+  - removing devices;
+  - replacing a device on re-enrolment;
+  - changing the passphrase;
+  - regenerating the recovery code;
+  - *Accept as current* (§7.3);
+  - merging conflict copies (§9.3).
+- **Open sessions:**
+  - A session unlocked with a device key re-reads that key from the OS store and opens its re-wrapped lockbox.
+  - A session unlocked with the passphrase or recovery code (`akv shell`, or a UI opened with the passphrase) asks for it again.
+  - A session that can't open the current file **never saves**.
+- **Limitation:** rotation protects the vault from this point on. It can't take back what the removed device could already read, including its OneDrive copy and older versions in version history. The removed device also still knows the identity secret (§3, accepted). There is no remote wipe. If that device was compromised, rotate the affected API keys with each provider.
+- **What the removed device sees:** its lockbox id is no longer in the header. It reports "This device no longer has access to this vault", and offers to delete its OS store item and local state, or to re-enrol with the passphrase.
+- **Edge case:** if two devices remove each other at the same moment, the merge keeps both removals (§9.3) and both are locked out. The passphrase still works, so either can re-enrol.
 
 ### 6.7 Stale-device pruning
 
-- Each device's lockbox metadata (name, created, last used) lives in the **encrypted payload**. The header holds only the lockbox id, kind and padlock.
-- "Last used" is updated **at most once a day**, so OneDrive isn't constantly syncing tiny changes. It is a usage field: merges take the latest value, and it never counts as an edit (§9.3).
-- Devices unused for more than **90 days** are flagged in the UI and in `akv status`. Removing one is a manual action, and always rotates the vault key (§6.6).
-- The passphrase and recovery lockboxes are never pruned.
+- Each device's lockbox metadata lives in the **encrypted payload** (§9.1). The header holds only the lockbox id, kind and padlock.
+- "Last used" is updated **at most once a day**, so OneDrive isn't constantly syncing tiny changes. Merges take the latest value, and it never counts as an edit.
+- Devices unused for more than **90 days** are flagged in the UI and in `akv status`. Removing them is a manual action (several at once if you like), and always rotates the vault key (§6.6).
+- There is no automatic pruning, because it would silently cut off a rarely used machine.
+- The passphrase and recovery lockboxes are never pruned (§5.3).
 
 ## 7. Integrity
 
 ### 7.1 The seal
 
-- The payload is encrypted with XChaCha20-Poly1305 under the vault key, with **AAD = every byte of the file before the payload nonce, exactly as stored** (magic, format version, header length and header, with no re-serialisation).
+- The payload is encrypted with XChaCha20-Poly1305 under the vault key, with **AAD = every byte of the file before the payload nonce, exactly as stored**: magic, format version, header length and header, with no re-serialisation.
 - Opening is a two-stage process: first get the vault key from your own lockbox, then **verify and decrypt in one AEAD step**. No plaintext is released unless the seal matches, so editing the header (adding a padlock, removing a lockbox, changing parameters, changing the format version) or the payload is always detected.
 - The seal only proves that the header and payload belong together under *some* vault key. Anyone can build a well-sealed file from the public padlocks, which is why §7.2 exists.
 
 ### 7.2 Vault identity secret (stops look-alike vaults)
 
-- **Enrolled devices pin it.** When a device enrols, it copies the identity secret from the payload into its OS store, next to its private key. On every device unlock, the payload's identity secret must match the pinned value. An attacker who builds a fake vault from my public padlocks can't know it. Enrolment never replaces a different pinned value (§6.4).
+- **Enrolled devices pin it.**
+  - When a device enrols, it copies the identity secret from the payload into its OS store, next to its private key.
+  - On every device unlock, the payload's identity secret must match the pinned value. Someone who builds a fake vault from my public padlocks can't know it.
+  - Enrolment never replaces a different pinned value (§6.4).
 - **Passphrase and recovery unlocks check a tag.** These unlocks have nothing pinned, so the passphrase and recovery lockboxes each carry
 
   ```
@@ -238,19 +276,10 @@ flowchart LR
   ```
 
   where `tag_key` is the second half of that owner's derived secret (§5.3). After the seal check, the tag is recomputed and must match.
-  - Someone who builds a look-alike vault for my passphrase padlock can't produce the tag without my passphrase.
-  - Copying the genuine tag doesn't help either, because it only matches the genuine identity secret, which is encrypted. The exception is someone who once held an owner secret and so already knows the identity secret (§3).
+  - Without my passphrase or recovery code, nobody can produce a valid tag for a look-alike vault.
+  - Copying the genuine tag doesn't help, because it only matches the genuine identity secret, which is encrypted.
 - Tags are recomputed only when their lockbox is replaced, which is when the passphrase or new recovery code is at hand anyway. Rotation (§6.6) keeps them valid, because the identity secret never changes.
-- **Key history (shuts out former owners on enrolled devices).**
-  - The payload carries an append-only list of key commitments, `HMAC-SHA256(vault_key, "akv/key-commit/v1")`, one for every vault key the vault has had.
-  - A file's key history must **end with the commitment of the key that sealed it**. This is checked after opening, so the last entry can't be faked.
-  - Each device pins the newest commitment it has seen, in its local state file (it reveals nothing about the key). Passphrase-only devices pin too.
-  - A file **reaches the pin** if its key history contains it: whoever wrote it held a key at least as new as the newest this device has seen. A file that doesn't is **behind or foreign**.
-  - Among the files that reach the pin, a file is **current** only if its history also contains every commitment in every other such file's history. If two such files each hold a commitment the other lacks, their histories have **diverged**: one may be a former owner's forgery, built on a key this device saw before the cut-off. Neither is then current.
-  - Files are judged this way whatever their names, so it doesn't matter which one OneDrive kept as `vault.akv` (§9.3).
-  - On every unlock, the vault as opened, after merging any copies, must contain the pin. Otherwise it's a rollback or a look-alike (§7.3).
-  - A former owner can read only payloads from before they were cut off. So they can't produce the commitment of any later key, and a file they build is "behind or foreign" on every device that has seen a later key.
-- **Limitation:** the identity secret is never rotated (§12). A former owner who knows it can still fool a device with no local state for this vault (one joining afresh), or one that hasn't opened the vault since they were cut off (§3, accepted).
+- **Limitation:** someone who once held an owner secret already knows the identity secret (§3, accepted).
 
 ### 7.3 Rollback detection
 
@@ -259,16 +288,13 @@ flowchart LR
 - It's a rollback, with a "this vault is older than one you've already seen" warning, if:
   - the counter is lower than the highest seen; or
   - the file holds a lockbox for a padlock this device knows was revoked. This catches a restored copy from before a device removal, which would otherwise quietly let that device back in.
-- A pinned key commitment missing from the vault's key history (§7.2) is treated the same way. The file is either older than one this device has seen or a look-alike, and the warning says it can't tell which.
-- Conflict copies are merged **before** these checks, which then run on the merged result (§9.3). A copy is normally behind, so the checks never apply to a copy on its own.
-- **Accept as current** (UC-25) works in this order:
-  1. It asks for the same proof as a passphrase change (§6.5): the current passphrase, the recovery code, or an OS re-authentication. A restored old copy can bring back an old passphrase, so accepting it is a change of who can open the vault.
-  2. It rotates the vault key, dropping every revoked padlock known to this device and adding every key commitment this device has seen. A rollback and a look-alike can't be told apart, so any lockbox whose (id, padlock) this device has never recorded is listed and **dropped unless confirmed one by one**. `--accept-rollback` refuses if there are any. The dialog also suggests the safer choice: restore, from OneDrive version history, the last version saved **before** this warning first appeared. In the look-alike case the newest version is the planted file, and OneDrive's history doesn't show which device saved each version.
-  3. If that would leave no passphrase lockbox or no recovery lockbox (the copy predates a passphrase change or a new recovery code), the user must set a new passphrase or take a new recovery code **in the same step**. `--accept-rollback` refuses in that case (exit 7).
-  4. It sets the save counter to one more than the larger of the file's counter and the highest this device has seen, and saves.
-
-  Only after that can anything else be written.
-- **Limitation:** a device that never opened a copy saved after the removal doesn't know the padlock was revoked, so it can't detect that rollback.
+- Conflict copies are merged **before** these checks, which then run on the merged result (§9.3).
+- The choices are *Continue read-only* (writes nothing) or *Accept as current* (UC-25). Accepting:
+  1. asks for the same proof as a passphrase change (§6.5);
+  2. rotates the vault key, dropping every revoked padlock this device knows about;
+  3. if the copy's passphrase or recovery lockbox is older than the one this device last saw (the copy predates a passphrase change or a new recovery code), requires a new passphrase or a new recovery code **in the same step**, so an old secret isn't quietly let back in. `--accept-rollback` refuses in that case (exit 7);
+  4. sets the save counter to one more than the larger of the file's counter and the highest this device has seen, and saves.
+- **Limitation:** a device that never opened a copy saved after a removal doesn't know the padlock was revoked, so it can't detect that rollback.
 
 ## 8. Device-side persistence
 
@@ -277,7 +303,7 @@ flowchart LR
 | Item | Where | Secret? |
 |---|---|---|
 | Device private key (32 B) + lockbox id + vault identity secret (32 B) | OS credential store, one item per vault, target `ApiKeyVault/<vaultId>` | **Yes** |
-| Known vaults (path, vault id), highest save counter seen, newest key commitment seen (the pin) and all commitments seen, every lockbox seen as (id, kind, padlock), revoked padlocks seen, last-used throttle | Local state file, e.g. `%LOCALAPPDATA%\ApiKeyVault\state.json` | No |
+| Known vaults (path, vault id), highest save counter seen, revoked padlocks seen, current passphrase and recovery lockbox ids, last-used throttle | Local state file, e.g. `%LOCALAPPDATA%\ApiKeyVault\state.json` | No |
 
 All OS store access goes through a single interface (`IDeviceKeyStore`: get / set / remove), so Tier 2 and other OSes can be added without touching the vault code.
 
@@ -308,20 +334,17 @@ vault.akv
 └── payload: nonce (24 B) + XChaCha20-Poly1305 ciphertext of
     {
       identity_secret, save_counter,
-      key_history: [ key_commitment, … ],                        # append-only (§7.2)
-      lockbox_registry: [ { lockbox_id, name, kind, created, last_used, stamp } ],
+      lockbox_registry: [ { lockbox_id, kind, name, created, last_used } ],
       revoked: [ { lockbox_id, recipient_pub, removed_at } ],   # append-only (§6.6, §7.3)
       entries: [ { id, provider, name, comment, source, expires, review_by, extra_fields,
+                   stamp,                                        # details
                    secret, secret_stamp, previous_secret?, previous_until?,
-                   retired_fingerprints: [ … ],                  # secrets rotated away
-                   created, field_stamps: { <field>: stamp, … },
-                   last_used, last_test } ],                     # last_* are usage fields
-                   # stamp = { time, writer lockbox_id } (hybrid logical clock, §9.3)
-                   # fingerprint = HMAC-SHA256(HKDF(identity_secret, "akv/fp/v1"), secret)
+                   created, last_used, last_test } ],            # last_* are usage fields
       profiles: [ { id, name, mappings: [ { var, entry_id, field? } ], stamp } ],
       settings: { <name>: { value, stamp }, … },                 # vault-wide settings (UI §5.7)
       tombstones: [ { id, stamp } ]                              # deleted entries and profiles
     }
+    # stamp = { time, writer lockbox_id }  (§9.3)
 ```
 
 All metadata (provider, name, comment, expiry) is encrypted, because it reveals too much to leave readable.
@@ -330,9 +353,13 @@ A reader checks the magic and format version **before** anything else. A version
 
 ### 9.2 Writing safely
 
-1. **One writer per machine:** take an exclusive per-vault lock on this machine around steps 2–4: a named mutex keyed by vault id, or a lock file under `%LOCALAPPDATA%`, **never** a file in the OneDrive folder. OneDrive only makes conflict copies between machines, so without this the UI and the CLI could silently overwrite each other.
+1. **One writer per machine:** take an exclusive per-vault lock on this machine around steps 2–4. Use a named mutex keyed by vault id, **never** a lock file in the OneDrive folder. OneDrive only makes conflict copies between machines, so without this the UI and the CLI could silently overwrite each other.
 2. **Re-read before write:** if the file on disk has changed since it was loaded (a different save counter or hash), reload and merge (§9.3) before saving.
-3. **Atomic replace:** write a temp file in the same folder and flush it. Re-check the file's hash just before replacing, because OneDrive can write a downloaded version at any moment; if it changed, go back to step 2. Then replace `vault.akv`, retrying briefly on sharing violations, since OneDrive holds file handles. OneDrive never sees a half-written file.
+3. **Atomic replace:**
+   - Write a temp file in the same folder and flush it.
+   - Re-check the file's hash just before replacing, because OneDrive can write a downloaded version at any moment. If it changed, go back to step 2.
+   - Then replace `vault.akv`, retrying briefly on sharing violations, since OneDrive holds file handles.
+   - OneDrive never sees a half-written file.
 4. A fresh payload nonce on every save.
 5. **Reads don't write**, except the throttled usage fields (§6.7). Those are skipped entirely in read-only mode (UC-25).
 
@@ -342,52 +369,33 @@ A reader checks the magic and format version **before** anything else. A version
 flowchart LR
   classDef existing fill:#3f4b5b,stroke:#94a3b8,color:#ffffff
   classDef added fill:#1f7a4d,stroke:#34d399,color:#ffffff
-  A[vault.akv and any vault-MACHINENAME.akv copies]:::existing --> B[Unlock each, identity checks, judge each by key history]:::existing
-  B --> C[Current files merge silently; behind-or-foreign files: revocations apply, everything else needs confirmation]:::added
-  C --> D[Merge field by field on hybrid-logical stamps]:::added
-  D --> E[Keep or replace the vault key, rollback checks on the result, save, archive the copies]:::existing
+  A[vault.akv and any vault-MACHINENAME.akv copies]:::existing --> B[Unlock each: seal + identity checks]:::existing
+  B --> C[Merge: newest stamp wins, secret merged separately, tombstones and revocations always kept]:::added
+  C --> D[Save under a fresh vault key, archive the copies]:::existing
 ```
 
-- **When:** conflict copies are merged as soon as the vault is opened, **before** the rollback checks (§7.3). Those checks then run on the merged result, never on either file alone.
-- **All files are treated alike.** OneDrive may keep either the older or the newer file as `vault.akv`, and anyone with write access can rename files, so a file's name carries no trust.
+- **When:** conflict copies are merged as soon as the vault is opened, **before** the rollback checks (§7.3), which then run on the merged result.
+- **All files are treated alike.** OneDrive may keep either the older or the newer file as `vault.akv`, so a file's name carries no weight.
 - **Checks on every file:**
   - The seal, the same `vault_id`, and the same identity secret (pinned value or identity tag).
-  - Every lockbox id must carry the same padlock this device recorded for it (§8.1), and the same in every file. An id never legitimately changes its padlock, because a replaced owner gets a new id (§5.2).
   - A file that has a lockbox for this owner but fails a check is **not merged**. It is reported as tampering (UC-24) and left where it is.
   - A file this owner has no lockbox in (for example, one saved before this device enrolled) isn't tampering. It is left for another device, or for the passphrase, to merge.
-- **Each file is then judged by its key history (§7.2):**
-  - **Current** (it reaches this device's pin, and its history contains every other pin-reaching file's commitments): written by someone who held the newest key in play. All its changes merge silently.
-  - **Everything else** is treated as **behind or foreign**. That covers a file that doesn't reach the pin, and *every* pin-reaching file when their histories have diverged. Such a file is either a genuine copy that missed a later key, or a file built by a former owner (§3), and the two can't be told apart. So:
-    - its **revocations** apply silently, because they only take access away. The exceptions are a revocation that would remove this device, or leave no passphrase or no recovery lockbox: those are asked;
-    - **every other change it carries** is listed and needs explicit confirmation, for example: "A copy that is behind this device adds LAPTOP-03, deletes openai/old and changes the endpoint of azure-openai/intent-eastus. Keep these changes?" This covers entry edits and deletions, added lockboxes (including any lockbox id this device has never seen), and replaced passphrase or recovery lockboxes.
-    - If the user declines, or under `--no-input`, its other changes are **not merged**. The file is kept and shown in `akv status` and the Attention view. If it is `vault.akv` itself, it's first moved to `conflicts/pending-<machine>-<time>.akv`, so writing the merged vault never destroys changes nobody has seen.
-  - **The merge always starts from the current file**, and the other files' accepted changes are applied on top of it. A merged vault is never built from revocations alone.
-  - If **no** file reaches the pin, it's a rollback or look-alike (§7.3, UC-25), and nothing is saved until it's accepted.
-  - If files reach the pin but **none is current** (their histories diverged), nothing is merged or saved automatically:
-    - The vault opens **read-only** from one of the diverged files, the user is told which one, and the warning says the copies have diverged. Under `--no-input`, exit 7.
-    - The warning first suggests the simpler way out: open the vault on a device that has been used since the last change to who can open the vault. That device sees a forged file as merely behind, and asks about its changes as for any behind file. Decline any change you don't recognise.
-    - *Resolve* asks for the same proof as a passphrase change (§6.5). It then shows the differences between the files **in both directions**, because neither side is trusted.
-      - **Revocations from either file always apply**, with the same exceptions as for a behind file (this device, or the last passphrase or recovery lockbox).
-      - Additions and entry changes are the user's choice. Any lockbox whose (id, padlock) this device never recorded is listed and **off by default**, whichever file it's in, the same rule as *Accept as current* (§7.3).
-    - Two devices merging the same conflict at the same moment can cause this legitimately. It is rare, and a planted file causes it too, so it's never resolved silently.
-  - A device with no pin yet (just joined) treats every file as reaching it. That is the residual risk in §3.
-- **Timestamps are hybrid logical clocks.** Every changed record is stamped with the writer's lockbox id and a time:
-  - the time is the later of the writer's clock and the newest stamp already in the vault plus 1 ms, so an edit always beats everything its device had already seen, even if that device's clock is slow;
-  - an edit is also always stamped at least 1 ms after **that field's** current stamp, and a delete (tombstone) at least 1 ms after the **largest** of the entry's field and secret stamps, whatever the clocks say;
-  - when working out the vault-wide newest stamp, stamps more than a day ahead of this device's clock are left out and flagged in the Attention view, so one bad clock can't drag every later stamp forward;
-  - the newest stamp wins, and ties go to the higher lockbox id.
-
-  This applies to entry fields, the secret, tombstones, profiles, vault settings and device-registry fields alike.
+- **Stamps:** every changed record is stamped with the writer's lockbox id and a time. The time is the later of the device clock and the newest stamp already in the vault plus 1 ms, so an edit always beats everything its device had already seen, even if its clock is slow. The newest stamp wins, and ties go to the higher lockbox id.
 - **Entries:**
-  - *Ordinary fields:* the newest stamp wins, field by field.
+  - *Details* (name, comment, expiry, extra fields and so on): the newest `stamp` wins.
+  - *The secret* is decided by `secret_stamp` alone, so a rotation on one device is never lost to a comment edit on another.
+    - If the losing secret is neither the winner's secret nor its *previous*, both devices rotated the key. The losing secret is kept as *previous*, and an Attention item is raised (UI UC-16).
   - *Usage fields* (`last_used`, `last_test`) take the latest value and never count as edits.
-  - *The secret* is decided by `secret_stamp` alone, so a rotation on one device is never lost to a comment edit on another. The losing secret is dropped if it's the winner's current secret or one of its `retired_fingerprints`, because it was rotated away on purpose. Otherwise both devices rotated the key: the losing secret is kept as *previous* and an Attention item is raised (UI UC-16). The two retired lists are merged.
-  - *Tombstones* win over edits with an older stamp. They make sure a deleted entry isn't brought back by a merge with an older copy.
-- **Lockboxes:** the union of all accepted files' lockboxes, minus every revoked one. If both copies changed the passphrase, or both regenerated the recovery code, the newest lockbox of that kind wins and the other is revoked. The merge result says which passphrase or code now works.
+  - *Tombstones* win over older stamps, so a deleted entry isn't brought back by a merge with an older copy.
+- **Profiles and vault settings:** the newest stamp wins.
+- **Lockboxes:**
+  - The result is the union of all files' lockboxes, minus every revoked one. The revoked lists are merged too.
+  - If both copies changed the passphrase, or both regenerated the recovery code, the newest lockbox of that kind wins and the other is revoked. The merge result says which passphrase or code now works.
+  - The result always has exactly one passphrase lockbox and one recovery lockbox (§5.3). A passphrase or recovery lockbox is only ever revoked when a newer one replaces it. A file with no passphrase lockbox or no recovery lockbox is treated as tampering, and isn't merged.
 - **The vault key:**
-  - The merged vault keeps the existing key only if **every** merged file was sealed under that same key **and** the merge drops none of its lockboxes. Everyone who knows that key then still holds a lockbox.
-  - In every other case, including diverged histories and any behind file, the merged vault gets a fresh key (§6.6). A key chosen by a planted file is therefore never kept.
-  - The key history is the union of all merged files', plus the new commitment if the key changed. The save counter is one more than the largest.
+  - A merge always saves under a **fresh** vault key (§6.6). Conflicts are rare, and this guarantees that no key known to a dropped owner survives.
+  - If two devices merge at the same moment, the result is just one more conflict copy, which the next open merges in the same way.
+- **Save counter:** one more than the largest. The merged copies are archived to `conflicts/`.
 
 ## 10. Runtime hygiene
 
@@ -412,21 +420,25 @@ flowchart LR
 |---|---|---|
 | X25519, XChaCha20-Poly1305, HKDF, Argon2id | **NSec** (libsodium) | Preferred. Argon2id supports only `p = 1` (§5.4). A small proof-of-concept must confirm that Native AOT works and that a raw X25519 private key can be imported and exported (`RawPrivateKey`, `AllowPlaintextExport`). |
 | Windows credential store | **Meziantou.Framework.Win32.CredentialManager** | v1 |
+| Windows re-authentication (§6.5) | `UserConsentVerifier` (Windows Hello), falling back to `CredUIPromptForWindowsCredentials` | v1. A proof-of-concept must confirm it works from the CLI, which has to supply a console window handle |
 | Linux Secret Service | **Tmds.DBus.Protocol** | Later |
 | macOS Keychain | P/Invoke to Security.framework (`[LibraryImport]`) | Later |
 | Rejected | Devlooped.CredentialManager (maintenance-fee checks, heavy dependencies), Microsoft.Identity.Client.Extensions.Msal (tied to MSAL's token cache) | — |
 
 ## 12. Accepted trade-offs
 
+- **A single-user vault, not an enterprise one.** The passphrase and recovery code live in my password manager, and the OS credential store provides the convenience. Nothing beyond that is built.
 - **Tier 1 is readable by any process running as me.** This matches Git, Azure CLI and most developer tooling. Tier 2 is the upgrade path, and it slots in behind `IDeviceKeyStore`.
 - **A custom file format** rather than KDBX or age. The constructions above are standard (they follow the `age` pattern). Only the container is ours, which keeps it small and lets the header be sealed.
 - **No 1Password-style Secret Key.** A strong passphrase plus Argon2id is the only defence against offline guessing. This was chosen for simpler recovery, and the OneDrive account has its own MFA.
-- **Whole-file encryption.** Simple and atomic. The vault is small, so re-encrypting it on every save costs nothing. The same goes for rotating the vault key on every owner change.
-- **The vault identity secret never rotates.** Rotating it can't be done safely: a removed device knows the old value, so it could forge any "step forward" link, and the identity tags (§7.2) can only be recomputed with the passphrase and recovery code at hand. The key history (§7.2), and the rule that a file which is behind or foreign changes nothing without confirmation (§9.3), limit what a former owner can do with it. The rest is the accepted former-owner row in §3.
+- **Whole-file encryption.** Simple and atomic. The vault is small, so re-encrypting it on every save costs nothing. The same goes for rotating the vault key on every owner change and every merge.
+- **The vault identity secret never rotates.** A former owner who can write to my OneDrive could therefore plant a vault my devices would open (§3). This is accepted. The remedy is to rotate the provider keys.
+- **Conflict merging is automatic.** Copies that pass the seal and identity checks are merged without asking.
 
 ## 13. Deferred
 
 - Tier 2 storage (Windows Hello / TPM, Secure Enclave, `systemd-creds`).
+- **Key history.** An append-only list of key commitments, pinned per device, would let up-to-date devices reject a vault planted by a former owner (§3). It also needs merge rules for copies that are behind or have diverged. This was considered and deferred as overkill for a single-user vault.
 - Per-secret encryption inside the file itself. In v1 this is done in memory only (§10).
 - FIDO2 / YubiKey `hmac-secret` as an extra lockbox kind.
 - Raising Argon2id parameters automatically as hardware gets faster.
@@ -435,47 +447,35 @@ flowchart LR
 
 - Round-trip tests: create, unlock (device / passphrase / recovery), enrol, remove and rotate, change passphrase.
 - Known-answer test vectors for the lockbox, the identity tag and the payload format.
-- Tamper tests: flip a byte in the magic/version, the header, a lockbox and the payload; add a padlock; roll back to an older copy. Each must be detected, and no plaintext must be returned.
-- Look-alike tests: a vault built from the genuine public padlocks with its own vault key and identity secret is rejected on:
+- Tamper tests: flip a byte in the magic/version, the header, a lockbox and the payload; add a padlock. Each must be detected, and no plaintext must be returned.
+- Look-alike tests: a vault built from the genuine public padlocks, with its own vault key and identity secret, is rejected on:
   - device unlock;
-  - passphrase unlock and recovery unlock on a device with nothing pinned;
+  - passphrase and recovery unlock on a device with nothing pinned, including when the genuine `id_tag` is copied into it;
   - re-enrolment of a device whose lockbox is missing.
-
-  It is also rejected when the genuine `id_tag` is copied into it.
-- Former-owner tests: someone holding the identity secret (a removed device, or an old passphrase plus an old copy) builds a look-alike vault, copying the current passphrase padlock and tag. An enrolled device that has seen a later key rejects it through the key history.
 - Owner-change tests:
   - after a passphrase change or recovery regeneration, the old passphrase or code plus an **older copy** of the file can't open the current file;
   - replacing a device on re-enrolment rotates the key;
   - a passphrase change is refused when the only proof is the device key;
   - re-tuning Argon2id gives a new lockbox id without a rotation.
+- Access tests:
+  - removing the passphrase or recovery lockbox is refused by the core, whether it's asked for by the UI, the CLI, *Accept as current* or a merge;
+  - removing this device's own lockbox is refused, whether the session was opened with the device key or with the passphrase;
+  - removing three other devices at once does one rotation, and none of the three can open the result;
+  - a removed device reports "no longer has access", not tampering.
 - Rollback tests:
   - restoring a copy from before a device removal is flagged by a device that saw the removal;
-  - *Accept as current* drops the revoked padlock, keeps the key history, and moves the save counter past every value seen;
-  - *Accept as current* on a copy from before a passphrase change or a new recovery code requires a new passphrase or code, and `--accept-rollback` refuses.
+  - *Accept as current* drops the revoked padlock and moves the save counter past every value seen;
+  - *Accept as current* on a copy from before a passphrase change requires a new passphrase, and `--accept-rollback` refuses.
 - Conflict tests, each verified on both merge orders **and** with OneDrive keeping either file as `vault.akv`:
-  - concurrent edits merged field by field;
-  - deletes and device removals not resurrected;
-  - a legitimate copy from before a removal is merged, not flagged as rollback or tampering;
-  - rotation × comment edit keeps the new secret;
-  - a stale copy arriving after *previous* expired doesn't bring back the retired secret;
-  - rotation × enrolment keeps the new device (silently on the enrolling side; after confirmation on a device that saw the rotation);
-  - rotation × passphrase change keeps the new passphrase only;
-  - two removals keep both removed, including on a `--no-input` device that is behind (revocations always apply);
-  - a merge on a device whose clock is a day slow still keeps the later edit, **delete included**;
-  - a stamp a week in the future is flagged and doesn't drag later stamps forward, yet an edit made after seeing it still beats it, and so does a delete when only **one** field of the entry carries the future stamp;
-  - two devices merging the same lockbox-dropping conflict at the same moment produce diverged histories: every device then opens read-only and writes nothing, under `--no-input` too (exit 7), until *Resolve*;
-  - after a merge that drops a lockbox, no key known to the dropped owner opens the merged file; a merge of files sealed under one key that drops nothing keeps that key;
-  - a behind `vault.akv` whose changes are declined, or held back under `--no-input`, is moved to `conflicts/pending-…` before the merged vault is written;
+  - concurrent edits to different entries are both kept;
+  - deletes and device removals aren't brought back;
+  - a rotation on one device and a comment edit on another keep the new secret and the new comment;
+  - an edit from a device whose clock is a day slow still beats what that device had seen;
+  - the merged vault is saved under a fresh key that no dropped owner's key opens;
   - a file with a different identity secret is refused, not merged;
-  - a file reusing a known lockbox id with a different padlock is refused as tampering;
+  - two devices that remove each other at the same moment both end up removed, and the passphrase and recovery lockboxes survive;
+  - a file with no passphrase or no recovery lockbox is refused as tampering;
   - a file this device has no lockbox in is left alone, not reported as tampering.
-- Former-owner merge tests, with the forged file planted both as `vault.akv` (genuine file renamed to a copy) and as a copy:
-  - a file that adds a lockbox, replaces the passphrase or recovery code, edits or deletes entries, and is behind or foreign, is not merged without confirmation, and its non-revocation changes are never merged under `--no-input`;
-  - an entries-only forged copy (for example a changed Azure endpoint) is not merged silently;
-  - **stale-device case:** after a removal on device A, a forged file built on the pre-removal key is planted next to the genuine file, and opened by device C whose pin predates the removal. The histories diverge, so C opens read-only and writes nothing (exit 7 under `--no-input`), the forger's key and lockbox are never adopted without *Resolve*, and A sees nothing change;
-  - *Accept as current* on a look-alike that carries an unrecorded lockbox drops it unless confirmed, and `--accept-rollback` refuses;
-  - *Resolve* with the forged file picked as the base doesn't keep its unrecorded lockbox, or its entry edits, without explicit confirmation;
-  - a file whose key history doesn't end with its own key's commitment is refused.
 - Concurrency tests: two processes on one machine saving at once lose nothing; a crash between writing the temp file and the replace leaves the old vault intact.
 - Version test: a file with a newer format version is reported as such, not as tampering.
 - Argon2id bounds: out-of-range parameters (including `p ≠ 1`) are rejected before derivation.
@@ -485,13 +485,13 @@ flowchart LR
 
 # ApiKeyVault — UI & CLI Design
 
-> **Status:** Draft from design discussion, 2026-10-05. Scope: what the user can do with ApiKeyVault (use cases), and how each use case works in the CLI (`akv`, Spectre.Console) and the desktop UI (Avalonia). Cryptography and storage are covered in `crypto-and-persistence.md`, referred to below as *Crypto §n*.
+> **Status:** Draft from design discussion, 2026-10-05; revised 2026-10-06 after review. Scope: what the user can do with ApiKeyVault (use cases), and how each use case works in the CLI (`akv`, Spectre.Console) and the desktop UI (Avalonia). Cryptography and storage are covered in `crypto-and-persistence.md`, referred to below as *Crypto §n*.
 
 ## 1. Context
 
-- ApiKeyVault replaces a plain-text file of API keys.
+- ApiKeyVault replaces a plain-text file of API keys, for a **single user** across their own devices.
 - There are two ways in:
-  - a **CLI** for the terminal and for scripts;
+  - a **CLI** for the terminal, scripts and AI agents;
   - a **desktop UI** for browsing and day-to-day copying.
 - Both are thin layers over one **Core** library, so every use case behaves the same way in both.
 - Daily use should be fast:
@@ -548,9 +548,9 @@ Live tests are read-only calls that cost nothing where possible. **Every endpoin
 | OpenAI | `sk-proj-…` / `sk-…` | platform.openai.com/api-keys | Organisation (optional) | `GET api.openai.com/v1/models` (Bearer) |
 | Anthropic | `sk-ant-api03-…` | platform.claude.com/settings/keys (console.anthropic.com redirects there) | — | `GET api.anthropic.com/v1/models` (`x-api-key`, `anthropic-version`) |
 | OpenRouter | `sk-or-v1-…` | openrouter.ai/settings/keys | — | `GET openrouter.ai/api/v1/key` (also shows usage and limit) |
-| Azure OpenAI | 32 or 84 characters | Azure portal → resource → *Keys and Endpoint* | Endpoint, deployment, API version | `GET {endpoint}/openai/models?api-version=…` (`api-key` header). The data-plane deployments list no longer exists in current API versions |
+| Azure OpenAI | 32 or 84 characters | Azure portal → resource → *Keys and Endpoint* | Endpoint, deployment, API version | `GET {endpoint}/openai/models?api-version=…` (`api-key` header) |
 | Gemini | `AIza…` (39 characters) | aistudio.google.com/apikey | — | `GET generativelanguage.googleapis.com/v1beta/models` (`x-goog-api-key`) |
-| Google Stitch | To confirm. It may share Gemini's `AIza` prefix, in which case import must ask, not guess | stitch.withgoogle.com/settings | — | To confirm. Possibly an MCP `tools/list` call to `stitch.googleapis.com/mcp` (`X-Goog-Api-Key`); otherwise stored without a live test |
+| Google Stitch | To confirm. It may share Gemini's `AIza` prefix, in which case import must ask, not guess | stitch.withgoogle.com/settings | — | To confirm. Otherwise stored without a live test |
 | Serper | 40 hex characters | serper.dev/api-key | — | To confirm. If there's no free endpoint, use a minimal search (1 credit) that only runs when you ask for a test |
 | Clockify | Alphanumeric | Clockify → Profile settings → API | Workspace (optional) | `GET api.clockify.me/api/v1/user` (`X-Api-Key`) |
 | Other | Anything | Free text | Any custom name/value pairs | Optional: an `https` URL + header name (+ prefix such as `Bearer `), test passes on any 2xx response |
@@ -588,15 +588,14 @@ Live tests are read-only calls that cost nothing where possible. **Every endpoin
 | UC-14 | Delete a key | `akv rm <key>` | 🗑 / Delete key |
 | UC-15 | Test a key, or all keys | `akv test <key>` / `akv test --all` | *Test* / *Test all* |
 | UC-16 | See what needs attention | `akv status` | *Attention* view and badge |
-| **Devices and security** | | | |
-| UC-17 | See devices | `akv device list` | *Settings → Devices* |
-| UC-18 | Remove a device (rotates the vault key) | `akv device remove <name>` | *Settings → Devices → Remove* |
-| UC-19 | Rename this device | `akv device rename <new>` | *Settings → Devices → Rename* |
-| UC-20 | Change the passphrase | `akv passphrase change` | *Settings → Security* |
-| UC-21 | Create a new recovery code | `akv recovery new` | *Settings → Security* |
-| UC-22 | Recover (forgotten passphrase, no enrolled device) | `akv recover` | Unlock screen → *Use recovery code* |
-| **When things go wrong** | | | |
-| UC-23 | OneDrive conflict copy found | Merged on next open and reported. A file that is behind this device needs confirmation for anything other than removing access | Banner: "Merged N changes from a conflicting copy", or a confirmation dialog |
+| **Access (devices, passphrase, recovery code)** | | | |
+| UC-17 | See who has access | `akv access list` | *Settings → Access* |
+| UC-18 | Remove one or more other devices (rotates the vault key) | `akv access remove <name>...` | *Settings → Access → Remove* (multi-select) |
+| UC-19 | Rename this device | `akv access rename <new>` | *Settings → Access → Rename* |
+| UC-20 | Change the passphrase | `akv passphrase change` | *Settings → Access → Passphrase → Replace* |
+| UC-21 | Create a new recovery code | `akv recovery new` | *Settings → Access → Recovery code → Replace* |
+| UC-22 | Recover (forgotten passphrase, no enrolled device) | `akv recover` | Unlock screen → *Use recovery code* || **When things go wrong** | | | |
+| UC-23 | OneDrive conflict copy found | Merged automatically on next open; reported in the output | Banner: "Merged N changes from a conflicting copy" |
 | UC-24 | Tampering detected | Stops; exit code 6 | Blocking error screen |
 | UC-25 | Older copy detected (rollback) | Warning; asks before continuing | Warning dialog |
 | **Settings** | | | |
@@ -609,7 +608,7 @@ Live tests are read-only calls that cost nothing where possible. **Every endpoin
 1. Choose the folder; the default suggestion is the OneDrive folder, if one is found. The vault file is set to OneDrive's *Always keep on this device*, so it can still be opened offline after Storage Sense frees up space.
 2. Enter the passphrase twice. A strength meter shows; weak passphrases trigger a warning, and very weak ones are refused.
 3. Argon2id is tuned automatically, with a "Securing…" spinner of about 1 s.
-4. The **recovery code** is shown once in a panel. To continue, type a **randomly chosen group** of the code to confirm you've saved it. There's also an option to print it (UI) or copy it to the clipboard once (with auto-clear).
+4. The **recovery code** is shown once in a panel, with a reminder to save it in your password manager. To continue, type a **randomly chosen group** of the code to confirm you've saved it. The code can also be copied to the clipboard once (with auto-clear).
 5. This device is enrolled automatically, using the machine name as the device name (editable).
 6. Offer to import (UC-04).
 
@@ -621,7 +620,7 @@ $ akv init
 ⠋ Securing (tuning key derivation)…
 ╭─ Recovery code ─ shown once ──────────────────────────────╮
 │  7KQ2-M9XD-4RTA-PB3W-ZE8N-H1FC-60VJ                       │
-│  Store it offline (paper, password manager).              │
+│  Save it in your password manager.                        │
 │  It opens the vault if you forget the passphrase.         │
 ╰───────────────────────────────────────────────────────────╯
 ? Type group 3 to confirm you saved it › 4RTA
@@ -683,14 +682,22 @@ $ akv import C:\Users\me\keys.txt
 
 **Addressing keys in the CLI:**
 - **Exact:** the full `provider/name`, or an entry id. This always works.
-- **Short:** just the `name`, if it's unique, or a fuzzy fragment. Allowed only when running interactively at a console, for `get` (clipboard and `--reveal`), `find`, `list` and `test`. If more than one key matches, a picker is shown, and the chosen `provider/name` is always echoed back before anything happens.
+- **Short:** just the `name`, if it's unique, or a fuzzy fragment.
+  - Allowed only when running interactively at a console, for `get` (clipboard and `--reveal`), `find`, `list` and `test`.
+  - If more than one key matches, a picker is shown.
+  - The chosen `provider/name` is always echoed back before anything happens.
 - Everything else accepts **exact addresses only**: `run`, `get --stdout`, `rm`, `rotate`, `edit`, every `--no-input` run, and every run without a console. Anything else is an error (exit 4), so a script never silently gets a different key after a rename or delete.
 
 **UC-06 Copy a key**
 
 1. The secret is decrypted on its own (§8) and put on the clipboard, flagged so Windows keeps it out of clipboard history and cloud clipboard.
-2. A countdown clears the clipboard after 20 s (configurable). It's only cleared if the clipboard still holds our value, so anything you copied since isn't wiped. Our value is recognised by the clipboard's change counter (Windows `GetClipboardSequenceNumber`) or by a SHA-256 of the value. The secret itself is wiped from our memory as soon as it's on the clipboard.
-3. CLI: the command stays open and shows a progress bar until the clipboard is cleared. Ctrl+C clears it straight away. `--no-wait` hands the clear-down to a small background helper and returns at once. The helper is given only the change counter and the hash, over a pipe, never the secret and nothing in its command line or environment.
+2. A countdown clears the clipboard after 20 s (configurable).
+   - It's only cleared if the clipboard still holds our value, so anything you copied since isn't wiped.
+   - Our value is recognised by the clipboard's change counter (Windows `GetClipboardSequenceNumber`) or by a SHA-256 of the value.
+   - The secret itself is wiped from our memory as soon as it's on the clipboard.
+3. CLI: the command stays open and shows a progress bar until the clipboard is cleared.
+   - Ctrl+C clears it straight away.
+   - `--no-wait` hands the clear-down to a small background helper and returns at once. The helper is given only the change counter and the hash, over a pipe: never the secret, and nothing in its command line or environment.
 4. UI: the status bar shows "📋 Copied claude-code · clears in 14s" with a ring countdown, and a *Clear now* button.
 5. The entry's "last used" time is recorded, at most once a day per entry.
 
@@ -700,11 +707,13 @@ $ akv import C:\Users\me\keys.txt
 $ akv run -e OPENAI_API_KEY=openai/personal-dev -e SERPER_API_KEY=serper/research -- python agent.py
 ```
 
-- The secrets are put only into the child process's environment.
-- **Exit code:** the child's exit code. If akv fails before the child starts, it uses the `env` / `docker run` convention so a script can tell the two apart: 125 for akv's own failure (with akv's reason on stderr, as JSON under `--json`), 126 if the command can't be run, 127 if it isn't found.
+- The secrets are put only into the child process's environment. No clipboard, screen, history or file is involved.
+- **Exit code:** the child's exit code. If akv fails before the child starts, it follows the `env` / `docker run` convention, so a script can tell the two apart:
+  - 125 for akv's own failure, with akv's reason on stderr (as JSON under `--json`);
+  - 126 if the command can't be run;
+  - 127 if it isn't found.
 - An extra field is injected with `#`, for example `-e AZURE_OPENAI_ENDPOINT=azure-openai/intent-eastus#endpoint`.
-- On Windows the command is resolved with `PATH` and `PATHEXT`, so `npx`, `npm` and other `.cmd` tools work. `.cmd` and `.bat` files run through `cmd.exe` with escaping that is safe against argument injection (CVE-2024-24576).
-- No clipboard, screen, history or file is involved.
+- On Windows the command is resolved with `PATH` and `PATHEXT`, so `npx`, `npm` and other `.cmd` tools work. `.cmd` and `.bat` files run through `cmd.exe` with escaping that is safe against the "BatBadBut" class of argument-injection bugs.
 - **Profiles** (optional): `akv run --profile agent -- python agent.py`, where `agent` is a saved set of `VAR=key` mappings stored in the vault. Profiles refer to entries **by id**, so renaming an entry doesn't break them, and deleting one makes the profile fail loudly.
 - UI: *Copy as command…* puts the `akv run …` line on the clipboard. That's safe, because the line doesn't contain the key.
 - **This is the way for AI agents to use keys.** The agent sees the command and its output, never the key, unless the child prints it.
@@ -713,10 +722,10 @@ $ akv run -e OPENAI_API_KEY=openai/personal-dev -e SERPER_API_KEY=serper/researc
 
 - `akv get <key> --stdout` writes the secret to stdout with no trailing newline (`--newline` adds one).
 - It's **refused when stdout is the terminal**, so the key never appears on screen or in the scrollback. Use `--reveal` (UC-09) to see it on purpose.
-- It's also **off until enabled on this device** (`akv config set allow-secret-output true`, §5.7). AI agent tools run commands with stdout piped and keep that output in their transcript, so the terminal check alone doesn't protect against an agent printing a key by accident.
-  - The setting can only be changed in the UI, or in the CLI by typing a confirmation phrase read from the console device itself (`CONIN$` / `/dev/tty`, not stdin). It's refused under `--no-input`. Processes started by an agent often have a hidden console, so "a console exists" isn't enough; a typed phrase is. An agent can't simply follow the error message and turn it on.
+- It's also **off until enabled on this device**, with the *Allow secret output to pipes* setting (§5.7).
+  - AI agent tools run commands with stdout piped and keep that output in their transcript, so the terminal check alone doesn't stop an agent printing a key by accident.
+  - The setting can be changed in the UI, or in the CLI only with a confirmation typed at the console. It's refused under `--no-input`.
   - The refusal message points to `akv run` (UC-07), not to the setting.
-  - This guards against accidents, not against a determined process running as you.
 
 **UC-09 Show a key on screen**
 
@@ -740,10 +749,13 @@ $ akv run -e OPENAI_API_KEY=openai/personal-dev -e SERPER_API_KEY=serper/researc
 
 - The fields from §3. Choosing a provider pre-fills the source and shows the format hint and any extra fields.
 - Secret input:
-  - UI: a masked box with paste support. Pasting from the clipboard clears the clipboard afterwards. A key copied from a provider's web page may already be in Windows clipboard history, so the app also removes the matching item from history where Windows allows it, and otherwise says so.
+  - UI: a masked box with paste support. Pasting from the clipboard clears the clipboard afterwards.
   - CLI: hidden prompt, `--from-clipboard`, or `--secret-stdin` for scripts.
-- A live test runs on save by default (`--no-test` skips it). If it fails, you can *Save anyway* or *Go back*. Under `--no-input`, a failed test means **not saved**, with exit 5, unless `--save-anyway` is given. "Couldn't test" saves with a warning.
-- Duplicate check: the same provider/name is refused. The same secret already stored under another name gives a warning, found by comparing fingerprints (Crypto §9.1) without decrypting every secret.
+- A live test runs on save by default (`--no-test` skips it).
+  - If it fails, you can *Save anyway* or *Go back*.
+  - Under `--no-input`, a failed test means **not saved**, with exit 5, unless `--save-anyway` is given.
+  - "Couldn't test" saves with a warning.
+- Duplicate check: the same provider/name is refused. The same secret already stored under another name gives a warning.
 
 ```
 $ akv add --provider anthropic --name claude-code --comment "Claude Code on DESKTOP-01" --from-clipboard
@@ -762,7 +774,7 @@ $ akv add --provider anthropic --name claude-code --comment "Claude Code on DESK
 1. **Open source:** opens the provider's key page in the browser.
 2. **New key:** paste the new secret; it's tested at once.
 3. **Save:** the new secret replaces the old one.
-   - The old secret is kept for 7 days as *previous*, so an accidental rotation can be undone (`akv rotate <key> --undo`, or *Undo rotation* in the UI). It's then removed during the next save you make.
+   - The old secret is kept for 7 days as *previous*, so an accidental rotation can be undone (`akv rotate <key> --undo`, or *Undo rotation* in the UI). It's then removed during the next save.
    - The *rotated on* date is recorded, and the review-by date can be pushed forward.
 4. **Revoke old:** a reminder to delete the old key on the provider's page, with a checkbox to confirm.
 
@@ -798,56 +810,89 @@ $ akv test --all
 - Collects:
   - keys that are due, expired or failing;
   - keys flagged "was stored in plain text";
-  - devices not used for over 90 days;
-  - a pending conflict copy.
+  - keys where two devices both rotated the secret (Crypto §9.3);
+  - devices not used for over 90 days.
 - CLI: `akv status` shows a summary panel with the vault path, number of devices, save counter and the items above.
 - UI: the *Attention* entry in the sidebar shows a count badge. The app opens to this view when there's something new.
 
-### 5.5 Devices and security
+### 5.5 Access
 
-**UC-17 See devices** — a table of name, kind (device / passphrase / recovery), created, last used and stale flag. *This device* is marked.
+**The rule** (Crypto §5.3):
 
-**UC-18 Remove a device**
+| Owner | Allowed | Not allowed |
+|---|---|---|
+| Passphrase | Replace (UC-20) | Remove |
+| Recovery code | Replace (UC-21) | Remove |
+| Other devices | Remove (UC-18) | — |
+| This device | Rename (UC-19) | Remove |
 
-1. Choose the device; it can't be this device.
-2. A confirmation explains what will happen:
-   - "DESKTOP-OLD will lose access. The vault key will be changed; your other devices aren't affected. Anything DESKTOP-OLD has already read can't be taken back. If that device may be compromised, rotate your API keys."
-3. The vault key is rotated (Crypto §6.6), with a spinner. The result is shown.
-4. If the device may be compromised, the follow-up *Rotate all keys…* flag marks every key as due for rotation.
+- There's no *Remove* button or command for the passphrase, the recovery code or the device you're on.
+- The core refuses these removals too, so no script, merge or rollback can do them either.
+- "This device" is the one whose key is in this machine's Credential Manager. It's recognised even if you opened the vault with the passphrase.
 
-**UC-19 Rename this device** — changes only the display name in the encrypted payload.
+**UC-17 See who has access**
+
+```
+Access                                                     [Remove selected]
+┌───┬───────────────┬──────────────┬──────────────┬──────────────┐
+│   │ Owner         │ Added        │ Last used    │              │
+├───┼───────────────┼──────────────┼──────────────┼──────────────┤
+│   │ Passphrase    │ 2026-10-05   │ today        │ [Replace]    │
+│   │ Recovery code │ 2026-10-05   │ never        │ [Replace]    │
+│   │ DESKTOP-01 ★  │ 2026-10-05   │ now          │              │
+│ ☐ │ LAPTOP-02     │ 2026-10-06   │ 2 days ago   │ [Remove]     │
+│ ☑ │ OLD-SURFACE   │ 2025-11-02   │ 142 days ⚠   │ [Remove]     │
+└───┴───────────────┴──────────────┴──────────────┴──────────────┘
+★ this device   ⚠ unused for over 90 days
+```
+
+- The passphrase and recovery code are listed first, then the devices.
+- Only other devices have a checkbox and a *Remove* button.
+- CLI: `akv access list` (`--json` for scripts), with this device marked.
+
+**UC-18 Remove one or more other devices**
+
+1. Tick one or more devices (CLI: `akv access remove OLD-SURFACE LAPTOP-02`).
+   - The passphrase, the recovery code and this device can't be selected.
+   - The CLI refuses them with exit 2: for this device, "You can't remove the device you're using. Remove it from another device."
+2. A confirmation explains what will happen: "OLD-SURFACE and LAPTOP-02 will lose access. The vault key will be changed; your other devices aren't affected. Anything they have already read can't be taken back. If one of them may be compromised, rotate your API keys."
+3. The vault key is rotated **once** for all of them (Crypto §6.6), with a spinner. The result is shown.
+
+**UC-19 Rename this device** — changes only the display name in the encrypted payload. Names stay unique.
 
 **UC-20 Change the passphrase**
 
-- First asks you to prove it's you, with any **one** of: the current passphrase, the recovery code, or Windows Hello (or the Windows sign-in prompt) (Crypto §6.5). Being unlocked by the device key isn't enough, so a passerby can't change it. If you've forgotten the passphrase but are on an enrolled device, Windows Hello is the way through.
+- First asks you to prove it's you, with any **one** of: the current passphrase, the recovery code, or Windows Hello (or the Windows sign-in prompt) (Crypto §6.5).
+  - Being unlocked by the device key isn't enough, so a passerby can't change it.
+  - If you've forgotten the passphrase but are on an enrolled device, Windows Hello is the way through.
 - Then enter the new one twice. A strength meter shows.
 - The vault key is rotated, with a spinner. Other devices aren't affected.
-- The confirmation states the limit: "Copies of the vault saved before now, such as in OneDrive version history, still open with the old passphrase."
+- The confirmation says: "Remember to update your password manager. Copies of the vault saved before now, such as in OneDrive version history, still open with the old passphrase."
 
 **UC-21 Create a new recovery code**
 
 - Proof as in UC-20.
 - A new code is shown once, then confirmed by typing a randomly chosen group.
-- The vault key is rotated, so the old code no longer opens the vault from now on. Copies saved before now still open with it, which the confirmation says.
+- The vault key is rotated, so the old code no longer opens the vault from now on. Copies saved before now still open with it, which the confirmation says, along with a reminder to update your password manager.
 
 **UC-22 Recover**
 
 1. Enter the recovery code. It's checked with its checksum, so typos are caught before trying it.
 2. Set a new passphrase.
 3. This device is enrolled.
-4. Offer to create a new recovery code. This is recommended, since the old one has now been typed in.
+4. Offer to create a new recovery code.
 
 ### 5.6 When things go wrong
 
 | Case | What the user sees | What they can do |
 |---|---|---|
-| **UC-23 Conflict copy** | "OneDrive created a conflicting copy (vault-LAPTOP-02.akv). Merged 2 changes." If a file is behind this device (it missed a key this device has seen), its changes are listed and confirmed first (copies whose histories have diverged are handled by the *Diverged copies* row below), except device removals, which always apply (Crypto §9.3): "A copy that is behind this device adds LAPTOP-03, deletes openai/old and changes the endpoint of azure-openai/intent-eastus. Keep these changes?" | *View changes* (list of merged entries), then the copy is archived to `conflicts/`. *Don't merge* leaves the copy in place, shown under Attention. Under `--no-input` those changes are never merged |
+| **UC-23 Conflict copy** | "OneDrive created a conflicting copy (vault-LAPTOP-02.akv). Merged 2 changes." | *View changes* (list of merged entries). The copy is archived to `conflicts/` |
 | **UC-24 Tampering** | "This vault file has been changed by something other than ApiKeyVault, is damaged, or isn't the vault this device knows. Nothing was decrypted." Also used for a conflict copy that fails its checks, which is then not merged | *Open OneDrive version history*; *Choose another file*. The vault can't be opened until it's fixed. A restored older version then shows as UC-25 |
-| **UC-25 Rollback** | "This vault is older than one this device has already seen (save 41 vs 57). Changes may be missing." If the copy still lets in a removed device, it says so | *Continue read-only* (writes nothing); *Open OneDrive version history*; *Accept as current* (needs the same proof as a passphrase change, UC-20; lists any device this one has never seen, and drops it unless you confirm; it rotates the vault key, which shuts out removed devices again, and moves the save counter past 57). If the older copy predates a passphrase change or a new recovery code, you set a new passphrase or take a new code as part of it (Crypto §7.3). CLI: `--accept-rollback`, which refuses in that case |
-| Diverged copies | "Two copies of this vault have diverged, and neither can be trusted over the other. Opened read-only from vault-LAPTOP-02.akv." Exit 7 under `--no-input` | First choice: open the vault on a device used since the last change to who can open it; it treats the odd copy as behind (decline anything you don't recognise). Otherwise *Resolve* (needs the proof of UC-20): the differences are shown both ways, device removals always apply, and a device this one has never seen is off by default (Crypto §9.3) |
+| **UC-25 Rollback** | "This vault is older than one this device has already seen (save 41 vs 57). Changes may be missing." If the copy still lets in a removed device, it says so | *Continue read-only* (writes nothing); *Open OneDrive version history*; *Accept as current*. Accepting needs the same proof as UC-20, rotates the vault key (which shuts out removed devices again), and asks for a new passphrase or recovery code if the copy predates a change to either (Crypto §7.3). CLI: `--accept-rollback`, which refuses in that last case |
 | Newer format | "This vault was saved by a newer version of ApiKeyVault." Exit code 8 | Update ApiKeyVault |
 | Vault file missing | "Vault not found at …" | *Locate…* / `akv config set vault <path>` |
-| Device no longer enrolled (OS store cleared, removed elsewhere) | Unlock screen with "This device needs to be enrolled again" | Enter the passphrase → re-enrol (replaces the old entry) |
+| Device removed from another device | "This device no longer has access to this vault." | *Clean up* (deletes the local credential and state); *Re-enrol with passphrase* |
+| Device no longer enrolled (OS store cleared) | Unlock screen with "This device needs to be enrolled again" | Enter the passphrase → re-enrol (replaces the old entry) |
 | Wrong passphrase | "Passphrase didn't open this vault." A short delay is added after each wrong attempt | Retry / *Use recovery code* |
 
 ### 5.7 Settings (UC-26)
@@ -889,7 +934,9 @@ akv
 ├── test [<key>|--all]           UC-15
 ├── status                       UC-16
 ├── profile list|set|rm          UC-07 (run profiles)
-├── device list|remove|rename    UC-17–19
+├── access list                  UC-17
+├── access remove <name>...      UC-18  (other devices only)
+├── access rename <new>          UC-19
 ├── passphrase change            UC-20
 ├── recovery new                 UC-21
 ├── recover                      UC-22
@@ -948,7 +995,7 @@ flowchart LR
   MAIN --> ADD[Add / Edit dialog]:::added
   MAIN --> ROT[Rotate wizard]:::added
   MAIN --> IMP[Import preview]:::added
-  MAIN --> SET[Settings: General / Devices / Security]:::added
+  MAIN --> SET[Settings: General / Access]:::added
   MAIN -->|Lock| UL
 ```
 
@@ -962,7 +1009,7 @@ flowchart LR
 │ ⚠ Attention 2 │ ● OpenAI · personal-dev          │                           │
 │───────────────│ ▲ Azure OpenAI · intent-eastus   │ Secret  ••••••••••  👁 📋  │
 │ Anthropic   2 │   expires in 27 days             │ Comment Claude Code on…   │
-│ OpenAI      3 │ ✕ Serper · research   401        │ Source  console.anthr… ↗  │
+│ OpenAI      3 │ ✕ Serper · research   401        │ Source  platform.clau… ↗  │
 │ OpenRouter  1 │ ● Gemini · stitch-proto          │ Expires —                 │
 │ Azure OpenAI 2│                                  │ Tested  ✓ today 09:14     │
 │ Gemini      2 │                                  │ Created 2026-03-02        │
@@ -1000,7 +1047,7 @@ flowchart LR
 
 ## 8. Secret handling in the interfaces
 
-**Requirement on the core:** whole-file encryption would put every secret in memory as plain text while the vault is open. Instead, the core keeps secrets **sealed in memory** (Crypto §10). The file format doesn't change:
+**Requirement on the core:** whole-file encryption would put every secret in memory as plain text while the vault is open. Instead, the core keeps secrets **sealed in memory** (Crypto §10), and the file format doesn't change:
 - unlocking makes only the entry details readable;
 - each secret is decrypted only when it's used, then wiped.
 
@@ -1039,8 +1086,8 @@ flowchart LR
 
 **Rules that make this possible:**
 
-- Every interactive control has an `AutomationProperties.AutomationId` (for example `Search.Box`, `Entry.Copy`, `Settings.Devices.Remove`).
-- The CLI's `--no-input` + `--json` + `--secret-stdin` (+ `--passphrase-stdin` on a device that isn't enrolled) let scripts run every use case without prompts, **except** `init`, `join`, `recover`, `passphrase change` and `recovery new`. Those are interactive on purpose and are covered by `TestConsole` tests instead.
+- Every interactive control has an `AutomationProperties.AutomationId` (for example `Search.Box`, `Entry.Copy`, `Settings.Access.Remove`).
+- The CLI's `--no-input` + `--json` + `--secret-stdin` (+ `--passphrase-stdin` on a device that isn't enrolled) let scripts run every use case without prompts. The exceptions are `init`, `join`, `recover`, `passphrase change` and `recovery new`, which are interactive on purpose and are covered by `TestConsole` tests instead.
 - The device key store, clock, clipboard and HTTP layer are interfaces (`IDeviceKeyStore`, `TimeProvider`, `IClipboard`, `IProviderTester`). Tests use fakes, so automated tests never touch the real Credential Manager, the real clipboard or real provider APIs.
 - **Automation only ever uses a throwaway test vault with fake keys.** It never points at the real `vault.akv`. The test fixtures create the vault in a temporary folder.
 
@@ -1056,14 +1103,18 @@ flowchart LR
 ## 11. Verification (when implemented)
 
 - Each use case UC-01 to UC-26 has at least one view-model or CLI test. The key flows (UC-01, 02, 04, 06, 07, 11, 13, 18, 22, 24) also have a headless UI test.
+- Access (UC-17 to UC-21):
+  - the Access screen has no *Remove* for the passphrase, the recovery code or this device, and `akv access remove` refuses them (exit 2);
+  - this device is recognised whether the vault was opened with the device key or the passphrase;
+  - removing several devices does one rotation.
 - Clipboard:
   - the value is cleared after the timeout;
   - it isn't cleared if the user copied something else since;
   - it doesn't appear in Win+V history;
   - lock and exit clear it at once;
   - the `--no-wait` helper's command line and environment contain no secret.
-- `akv get --stdout` is refused on a terminal, refused while *Allow secret output* is off, and works when piped with it on. `--reveal` is refused when piped. `akv config set allow-secret-output` is refused under `--no-input` and without a phrase typed at the console device.
-- Conflict copy (UC-23): a file that is behind this device has its changes merged only after confirmation, and never under `--no-input`. Device removals in it always apply.
+- `akv get --stdout` is refused on a terminal, refused while *Allow secret output* is off, and works when piped with it on. `--reveal` is refused when piped. Turning the setting on is refused under `--no-input`.
+- Conflict copy (UC-23): merged automatically and archived; a copy that fails its checks isn't merged.
 - No secret in output: a test scans stdout, stderr, `--json` output and exception text for every secret in the test vault.
 - Key addressing: a fuzzy or bare-name address is refused (exit 4) by `run`, `--stdout`, `rm`, `rotate`, `edit` and every `--no-input` or console-less run, even when exactly one key matches. Where short addresses are allowed, the chosen key is echoed before acting.
 - `akv run`:
