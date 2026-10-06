@@ -174,13 +174,24 @@ public static class CrockfordBase32
 
     private static (int c1, int c2) ComputeChecksum(ReadOnlySpan<byte> data)
     {
-        int sum1 = 0;
-        int sum2 = 0;
-        for (int i = 0; i < data.Length; i++)
+        ushort crc = 0xFFFF;
+        foreach (byte b in data)
         {
-            sum1 = (sum1 + data[i] * (i + 1)) % 32;
-            sum2 = (sum2 + data[i] * (17 - i)) % 32;
+            crc ^= (ushort)(b << 8);
+            for (int j = 0; j < 8; j++)
+            {
+                if ((crc & 0x8000) != 0)
+                {
+                    crc = (ushort)((crc << 1) ^ 0x1021);
+                }
+                else
+                {
+                    crc <<= 1;
+                }
+            }
         }
-        return (sum1, sum2);
+        int c1 = crc & 0x1F;
+        int c2 = (crc >> 5) & 0x1F;
+        return (c1, c2);
     }
 }

@@ -138,6 +138,7 @@ public static class VaultManager
             RevokedPadlocksSeen = []
         };
         state.Settings.DefaultVaultPath = Path.GetFullPath(vaultPath);
+        state.Settings.AddRecentVault(vaultPath);
         localStateManager.Save(state);
 
         var session = new VaultSession(
@@ -444,6 +445,8 @@ public static class VaultManager
         var recLb = header.Lockboxes.FirstOrDefault(l => l.Kind == "recovery");
         if (recLb != null) localVaultState.CurrentRecoveryLockboxId = recLb.LockboxId;
 
+        state.Settings.DefaultVaultPath = fullVaultPath;
+        state.Settings.AddRecentVault(fullVaultPath);
         localStateManager.Save(state);
 
         return new VaultSession(

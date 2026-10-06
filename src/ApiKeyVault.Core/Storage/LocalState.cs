@@ -52,6 +52,33 @@ public sealed class LocalSettings
 
     [JsonPropertyName("default_vault_path")]
     public string? DefaultVaultPath { get; set; }
+
+    [JsonPropertyName("recent_vault_paths")]
+    public List<string> RecentVaultPaths { get; set; } = [];
+
+    public void AddRecentVault(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        try
+        {
+            string full = Path.GetFullPath(path);
+            RecentVaultPaths.RemoveAll(p => string.Equals(p, full, StringComparison.OrdinalIgnoreCase));
+            RecentVaultPaths.Insert(0, full);
+            if (RecentVaultPaths.Count > 10)
+            {
+                RecentVaultPaths.RemoveRange(10, RecentVaultPaths.Count - 10);
+            }
+        }
+        catch
+        {
+            // Ignore path formatting exceptions
+        }
+    }
+
+    public void RemoveRecentVault(string path)
+    {
+        RecentVaultPaths.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+    }
 }
 
 public sealed class AppLocalState
@@ -75,9 +102,14 @@ public sealed class LocalStateManager
 
     public LocalStateManager(string? customStateFilePath = null)
     {
+        string? envPath = Environment.GetEnvironmentVariable("AKV_STATE_PATH");
         if (!string.IsNullOrEmpty(customStateFilePath))
         {
             _stateFilePath = customStateFilePath;
+        }
+        else if (!string.IsNullOrEmpty(envPath))
+        {
+            _stateFilePath = envPath;
         }
         else
         {

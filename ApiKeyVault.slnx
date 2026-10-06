@@ -2,9 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/ApiKeyVault.Cli/ApiKeyVault.Cli.csproj" />
     <Project Path="src/ApiKeyVault.Core/ApiKeyVault.Core.csproj" />
+    <Project Path="src/ApiKeyVault.UI/ApiKeyVault.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ApiKeyVault.Cli.Tests/ApiKeyVault.Cli.Tests.csproj" />
     <Project Path="tests/ApiKeyVault.Core.Tests/ApiKeyVault.Core.Tests.csproj" />
+    <Project Path="tests/ApiKeyVault.UI.Tests/ApiKeyVault.UI.Tests.csproj" />
   </Folder>
 </Solution>

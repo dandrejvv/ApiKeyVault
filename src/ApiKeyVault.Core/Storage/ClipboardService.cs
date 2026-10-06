@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ApiKeyVault.Cli.Services;
+namespace ApiKeyVault.Core.Storage;
 
 public interface IClipboardService
 {
@@ -88,7 +88,6 @@ public sealed class WindowsClipboardService : IClipboardService
                 IntPtr hFlag2 = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)4);
                 if (hFlag2 != IntPtr.Zero)
                 {
-                    // Value 0 = do not include
                     IntPtr target = GlobalLock(hFlag2);
                     if (target != IntPtr.Zero)
                     {

@@ -1,0 +1,144 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ApiKeyVault.UI.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <!-- Obsidian Vault v2 Elevation & Palette Tokens -->
+        <Color x:Key="SurfaceLowestColor">#060d20</Color>
+        <Color x:Key="SurfaceBaseColor">#0b1326</Color>
+        <Color x:Key="SurfaceContainerColor">#121d38</Color>
+        <Color x:Key="SurfaceContainerHighColor">#182548</Color>
+        <Color x:Key="SurfaceContainerHighestColor">#202f5a</Color>
+
+        <Color x:Key="BorderSubtleColor">#1a2542</Color>
+        <Color x:Key="BorderFocusColor">#10b981</Color>
+        <Color x:Key="BorderAccentColor">#3310b981</Color>
+
+        <Color x:Key="PrimaryColor">#10b981</Color>
+        <Color x:Key="PrimaryHoverColor">#059669</Color>
+        <Color x:Key="OnPrimaryColor">#020617</Color>
+        <Color x:Key="PrimarySurfaceColor">#1f10b981</Color>
+
+        <Color x:Key="SecondaryColor">#4edea3</Color>
+        <Color x:Key="OnSurfaceColor">#f1f5f9</Color>
+        <Color x:Key="OnSurfaceMutedColor">#94a3b8</Color>
+        <Color x:Key="OnSurfaceDimColor">#64748b</Color>
+
+        <Color x:Key="StatusDangerColor">#f43f5e</Color>
+        <Color x:Key="StatusWarningColor">#f59e0b</Color>
+        <Color x:Key="StatusNeutralColor">#94a3b8</Color>
+
+        <SolidColorBrush x:Key="SurfaceLowestBrush" Color="{StaticResource SurfaceLowestColor}" />
+        <SolidColorBrush x:Key="SurfaceBaseBrush" Color="{StaticResource SurfaceBaseColor}" />
+        <SolidColorBrush x:Key="SurfaceContainerBrush" Color="{StaticResource SurfaceContainerColor}" />
+        <SolidColorBrush x:Key="SurfaceContainerHighBrush" Color="{StaticResource SurfaceContainerHighColor}" />
+        <SolidColorBrush x:Key="SurfaceContainerHighestBrush" Color="{StaticResource SurfaceContainerHighestColor}" />
+
+        <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource BorderSubtleColor}" />
+        <SolidColorBrush x:Key="BorderFocusBrush" Color="{StaticResource BorderFocusColor}" />
+        <SolidColorBrush x:Key="BorderAccentBrush" Color="{StaticResource BorderAccentColor}" />
+
+        <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}" />
+        <SolidColorBrush x:Key="PrimaryHoverBrush" Color="{StaticResource PrimaryHoverColor}" />
+        <SolidColorBrush x:Key="OnPrimaryBrush" Color="{StaticResource OnPrimaryColor}" />
+        <SolidColorBrush x:Key="PrimarySurfaceBrush" Color="{StaticResource PrimarySurfaceColor}" />
+
+        <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource SecondaryColor}" />
+        <SolidColorBrush x:Key="OnSurfaceBrush" Color="{StaticResource OnSurfaceColor}" />
+        <SolidColorBrush x:Key="OnSurfaceMutedBrush" Color="{StaticResource OnSurfaceMutedColor}" />
+        <SolidColorBrush x:Key="OnSurfaceDimBrush" Color="{StaticResource OnSurfaceDimColor}" />
+
+        <SolidColorBrush x:Key="StatusDangerBrush" Color="{StaticResource StatusDangerColor}" />
+        <SolidColorBrush x:Key="StatusWarningBrush" Color="{StaticResource StatusWarningColor}" />
+        <SolidColorBrush x:Key="StatusNeutralBrush" Color="{StaticResource StatusNeutralColor}" />
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- Primary Emerald Action Button -->
+        <Style Selector="Button.primary, Button.accent">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,9" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.primary:pointerover, Button.accent:pointerover">
+            <Setter Property="Background" Value="{StaticResource PrimaryHoverBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnPrimaryBrush}" />
+        </Style>
+        <Style Selector="Button.primary:pressed, Button.accent:pressed">
+            <Setter Property="Background" Value="#047857" />
+            <Setter Property="Foreground" Value="{StaticResource OnPrimaryBrush}" />
+        </Style>
+
+        <!-- Secondary Ghost Action Button -->
+        <Style Selector="Button.secondary, Button.ghost">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.secondary:pointerover, Button.ghost:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighestBrush}" />
+            <Setter Property="BorderBrush" Value="rgba(255, 255, 255, 0.18)" />
+            <Setter Property="Foreground" Value="#ffffff" />
+        </Style>
+
+        <!-- Danger Button -->
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="rgba(244, 63, 94, 0.12)" />
+            <Setter Property="Foreground" Value="{StaticResource StatusDangerBrush}" />
+            <Setter Property="BorderBrush" Value="rgba(244, 63, 94, 0.30)" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12,6" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="rgba(244, 63, 94, 0.22)" />
+        </Style>
+
+        <!-- Subtle Text Link / Utility Button -->
+        <Style Selector="Button.subtle">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceMutedBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.subtle:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+        </Style>
+
+        <!-- Standard High-Elevation TextBoxes -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
+            <Setter Property="BorderBrush" Value="rgba(255, 255, 255, 0.10)" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="SelectionBrush" Value="rgba(16, 185, 129, 0.30)" />
+            <Setter Property="CaretBrush" Value="{StaticResource PrimaryBrush}" />
+        </Style>
+        <Style Selector="TextBox:focus">
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+        </Style>
+
+    </Application.Styles>
+</Application>
