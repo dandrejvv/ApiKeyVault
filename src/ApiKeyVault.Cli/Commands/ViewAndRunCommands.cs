@@ -32,7 +32,7 @@ public sealed class ListSettings : GlobalSettings
 
 public sealed class ListCommand : Command<ListSettings>
 {
-    public override int Execute(CommandContext context, ListSettings settings)
+    public override int Execute(CommandContext context, ListSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -141,7 +141,7 @@ public sealed class FindSettings : GlobalSettings
 
 public sealed class FindCommand : Command<FindSettings>
 {
-    public override int Execute(CommandContext context, FindSettings settings)
+    public override int Execute(CommandContext context, FindSettings settings, CancellationToken cancellationToken)
     {
         var listSettings = new ListSettings
         {
@@ -150,7 +150,7 @@ public sealed class FindCommand : Command<FindSettings>
             NoInput = settings.NoInput,
             Search = settings.Query
         };
-        return new ListCommand().Execute(context, listSettings);
+        return new ListCommand().Execute(context, listSettings, cancellationToken);
     }
 }
 
@@ -179,7 +179,7 @@ public sealed class GetSettings : GlobalSettings
 
 public sealed class GetCommand : Command<GetSettings>
 {
-    public override int Execute(CommandContext context, GetSettings settings)
+    public override int Execute(CommandContext context, GetSettings settings, CancellationToken cancellationToken)
     {
         try
         {
@@ -326,7 +326,7 @@ public sealed class RunSettings : GlobalSettings
 
 public sealed class RunCommand : Command<RunSettings>
 {
-    public override int Execute(CommandContext context, RunSettings settings)
+    public override int Execute(CommandContext context, RunSettings settings, CancellationToken cancellationToken)
     {
         if (settings.CommandArgs.Length == 0)
         {
