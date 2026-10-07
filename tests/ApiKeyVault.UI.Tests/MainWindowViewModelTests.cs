@@ -91,9 +91,9 @@ public class MainWindowViewModelTests : IDisposable
         var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
         var session = createResult.Session;
 
-        session.AddEntry("openai", "personal-dev", "sk-proj-test1");
-        session.AddEntry("anthropic", "claude-code", "sk-ant-test2");
-        session.AddEntry("openai", "work-prod", "sk-proj-test3", expires: DateTimeOffset.UtcNow.AddDays(5)); // due!
+        session.AddEntry("openai", "personal-dev", "demo-openai-key-dev");
+        session.AddEntry("anthropic", "claude-code", "demo-anthropic-key-code");
+        session.AddEntry("openai", "work-prod", "demo-openai-key-prod", expires: DateTimeOffset.UtcNow.AddDays(5)); // due!
         session.Dispose();
 
         var vm = CreateViewModel();
@@ -172,7 +172,7 @@ public class MainWindowViewModelTests : IDisposable
 
         // Fill out fields
         vm.KeyDialogAddress = "stripe/live";
-        vm.KeyDialogSecret = "sk_live_secret999";
+        vm.KeyDialogSecret = "demo-stripe-secret-999";
         vm.KeyDialogComment = "Primary billing key";
         vm.KeyDialogExpiryDays = 90;
 
@@ -213,6 +213,68 @@ public class MainWindowViewModelTests : IDisposable
         Assert.False(vm.IsAddKeyDialogOpen);
         Assert.Equal("Updated billing comment", vm.SelectedEntry.Comment);
         Assert.Equal("new-rotated-secret-456", vm.SelectedEntry.Entry.Secret);
+    }
+
+    [Fact]
+    public void AddKeyDialog_WithCalendarExpirationDate_AndPresetShortcuts()
+    {
+        VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+
+        var vm = CreateViewModel();
+        vm.OpenAddKeyDialogCommand.Execute(null);
+
+        vm.KeyDialogAddress = "github/pat";
+        vm.KeyDialogSecret = "demo-github-token-998877";
+        vm.KeyDialogComment = "CI Token";
+
+        // Initially null (optional expiry)
+        Assert.Null(vm.KeyDialogExpiresDate);
+
+        // Test preset +30d
+        vm.SetExpirationDaysCommand.Execute("30");
+        Assert.NotNull(vm.KeyDialogExpiresDate);
+        Assert.Equal(DateTime.Today.AddDays(30), vm.KeyDialogExpiresDate.Value.Date);
+
+        // Test clear
+        vm.ClearExpirationDateCommand.Execute(null);
+        Assert.Null(vm.KeyDialogExpiresDate);
+
+        // Set specific calendar date
+        var targetDate = DateTime.Today.AddDays(60);
+        vm.KeyDialogExpiresDate = targetDate;
+
+        vm.SaveKeyDialogCommand.Execute(null);
+
+        Assert.Equal(1, vm.TotalKeysCount);
+        Assert.NotNull(vm.SelectedEntry);
+        Assert.NotNull(vm.SelectedEntry.Entry.Expires);
+        Assert.Equal(targetDate, vm.SelectedEntry.Entry.Expires.Value.LocalDateTime.Date);
+    }
+
+    [Fact]
+    public void EditKeyDialog_LoadsAndClearsExpirationDate()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+        var initialExpiry = DateTimeOffset.UtcNow.AddDays(45);
+        createResult.Session.AddEntry("slack", "bot-token", "demo-slack-token-554433", expires: initialExpiry);
+        createResult.Session.Dispose();
+
+        var vm = CreateViewModel();
+        Assert.NotNull(vm.SelectedEntry);
+
+        // Open edit dialog
+        vm.OpenEditKeyDialogCommand.Execute(null);
+        Assert.NotNull(vm.KeyDialogExpiresDate);
+        Assert.Equal(initialExpiry.LocalDateTime.Date, vm.KeyDialogExpiresDate.Value.Date);
+
+        // Clear expiration date
+        vm.ClearExpirationDateCommand.Execute(null);
+        Assert.Null(vm.KeyDialogExpiresDate);
+
+        vm.SaveKeyDialogCommand.Execute(null);
+
+        Assert.Null(vm.SelectedEntry.Entry.Expires);
+        Assert.Null(vm.SelectedEntry.Entry.ReviewBy);
     }
 
     [Fact]

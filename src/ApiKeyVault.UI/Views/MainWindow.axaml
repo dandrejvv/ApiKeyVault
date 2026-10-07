@@ -198,251 +198,318 @@
         <!-- ======================================================== -->
         <!-- 3. UNLOCKED MAIN WORKSPACE (Obsidian Vault v2)           -->
         <!-- ======================================================== -->
-        <Grid IsVisible="{Binding IsUnlocked}" RowDefinitions="Auto, *, Auto">
-            <!-- Top Navigation Bar -->
-            <Border Grid.Row="0" Background="{StaticResource SurfaceBaseBrush}" Padding="14,10" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1">
-                <Grid ColumnDefinitions="Auto, Auto, *, Auto">
-                    <!-- Brand Title -->
-                    <TextBlock Grid.Column="0" Text="🔒 ApiKeyVault" FontWeight="SemiBold" FontSize="15" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" Margin="6,0,12,0" />
-
-                    <!-- Vault Chip with Pulsing Indicator -->
-                    <Border Grid.Column="1" Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" CornerRadius="12" Padding="8,3" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <Border Width="6" Height="6" CornerRadius="3" Background="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding ActiveVaultFileName}" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource SecondaryBrush}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Search Box -->
-                    <TextBox Grid.Column="2" Text="{Binding SearchText}"
-                             Watermark="Search keys... (Ctrl+K)"
-                             Width="340" HorizontalAlignment="Left" Height="34"
-                             AutomationProperties.AutomationId="Search.Box" />
-
-                    <!-- Action Buttons: Exactly One Primary CTA + Subtle Secondary Ghosts -->
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
-                        <Button Content="+ Add Key" Command="{Binding OpenAddKeyDialogCommand}"
-                                Classes="primary" Height="32"
-                                AutomationProperties.AutomationId="Nav.AddKey" />
-
-                        <Button Content="📂 Switch Vault" Command="{Binding SwitchVaultCommand}"
-                                Classes="secondary" Height="32"
-                                AutomationProperties.AutomationId="Nav.SwitchVault" />
-
-                        <Button Content="🔒 Lock" Command="{Binding LockCommand}"
-                                Classes="secondary" Height="32"
-                                AutomationProperties.AutomationId="Nav.Lock" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- Main Body: Sidebar + Key List + Detail Pane -->
-            <Grid Grid.Row="1" ColumnDefinitions="210, 320, *">
-                <!-- Sidebar -->
-                <Border Grid.Column="0" Background="{StaticResource SurfaceBaseBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Padding="10">
-                    <StackPanel Spacing="4">
-                        <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                Command="{Binding SetFilterCommand}" CommandParameter="all"
-                                AutomationProperties.AutomationId="Nav.AllKeys">
-                            <Grid ColumnDefinitions="*, Auto">
-                                <TextBlock Grid.Column="0" Text="All Keys" />
-                                <Border Grid.Column="1" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="4" Padding="6,1">
-                                    <TextBlock Text="{Binding TotalKeysCount}" FontSize="10" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+        <Grid IsVisible="{Binding IsUnlocked}" RowDefinitions="*, Auto">
+            <!-- 3-Column Layout: Sidebar (Full Height) | Key List Table | Inspector Panel -->
+            <Grid Grid.Row="0" ColumnDefinitions="240, *, 390">
+                <!-- ==================== COLUMN 0: SIDEBAR ==================== -->
+                <Border Grid.Column="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Padding="14,16">
+                    <Grid RowDefinitions="Auto, Auto, Auto, *, Auto">
+                        <!-- 1. Logo & App Branding -->
+                        <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,14">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="{StaticResource PrimaryBrush}" VerticalAlignment="Center">
+                                    <TextBlock Text="🛡" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#020617" />
                                 </Border>
-                            </Grid>
-                        </Button>
+                                <TextBlock Text="ApiKeyVault" FontSize="17" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
 
-                        <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                Command="{Binding SetFilterCommand}" CommandParameter="production"
-                                AutomationProperties.AutomationId="Nav.Production">
-                            <Grid ColumnDefinitions="*, Auto">
-                                <TextBlock Grid.Column="0" Text="Production" />
-                                <Border Grid.Column="1" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="4" Padding="6,1">
-                                    <TextBlock Text="{Binding ProductionCount}" FontSize="10" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                Command="{Binding SetFilterCommand}" CommandParameter="development"
-                                AutomationProperties.AutomationId="Nav.Development">
-                            <Grid ColumnDefinitions="*, Auto">
-                                <TextBlock Grid.Column="0" Text="Development" />
-                                <Border Grid.Column="1" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="4" Padding="6,1">
-                                    <TextBlock Text="{Binding DevelopmentCount}" FontSize="10" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                Command="{Binding SetFilterCommand}" CommandParameter="attention"
-                                AutomationProperties.AutomationId="Nav.Attention">
-                            <Grid ColumnDefinitions="*, Auto">
-                                <TextBlock Grid.Column="0" Text="⚠️ Attention" Foreground="{StaticResource StatusWarningBrush}" />
-                                <Border Grid.Column="1" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="4" Padding="6,1">
-                                    <TextBlock Text="{Binding AttentionCount}" FontSize="10" Foreground="{StaticResource StatusWarningBrush}" />
-                                </Border>
-                            </Grid>
-                        </Button>
-
-                        <Separator Margin="0,8" Background="{StaticResource BorderSubtleBrush}" />
-                        <TextBlock Text="PROVIDERS" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10" FontWeight="SemiBold" Margin="8,4" />
-
-                        <ItemsControl ItemsSource="{Binding ProviderFilters}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="vm:ProviderFilterItemViewModel">
-                                    <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetFilterCommand}"
-                                            CommandParameter="{Binding Name}">
-                                        <Grid ColumnDefinitions="*, Auto">
-                                            <TextBlock Grid.Column="0" Text="{Binding Name}" />
-                                            <Border Grid.Column="1" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="4" Padding="6,1">
-                                                <TextBlock Text="{Binding Count}" FontSize="10" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                            </Border>
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
-
-                <!-- Entries List -->
-                <Border Grid.Column="1" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0">
-                    <ListBox ItemsSource="{Binding FilteredEntries}"
-                             SelectedItem="{Binding SelectedEntry}"
-                             Background="Transparent"
-                             AutomationProperties.AutomationId="Entry.List">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate DataType="vm:EntryItemViewModel">
-                                <Grid ColumnDefinitions="Auto, *" Margin="4,2">
-                                    <TextBlock Grid.Column="0" Text="{Binding StatusIcon}" Foreground="{Binding StatusColor}"
-                                               FontSize="15" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <StackPanel Grid.Column="1" Spacing="2">
-                                        <TextBlock Text="{Binding Address}" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" FontSize="13" />
-                                        <TextBlock Text="{Binding ExpiryDescription}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" />
+                            <!-- User / Machine Profile Pill -->
+                            <Border Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,8,0,0">
+                                <Grid ColumnDefinitions="Auto, *">
+                                    <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{StaticResource SurfaceContainerHighestBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <TextBlock Text="👤" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding ActiveVaultFileName}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" TextTrimming="CharacterEllipsis" />
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <TextBlock Text="●" FontSize="7" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="vault unlocked" FontSize="10" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                                        </StackPanel>
                                     </StackPanel>
                                 </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Border>
-
-                <!-- Detail Pane & Empty State Canvas -->
-                <Border Grid.Column="2" Background="{StaticResource SurfaceLowestBrush}" AutomationProperties.AutomationId="Detail.Pane">
-                    <Grid>
-                        <!-- Structured Empty State Canvas (when no entry selected) -->
-                        <Border IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNull}}"
-                                HorizontalAlignment="Center" VerticalAlignment="Center" Padding="32">
-                            <Border MaxWidth="480" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="16" Padding="48,32">
-                                <StackPanel Spacing="16" HorizontalAlignment="Center">
-                                    <!-- 64x64 Emerald Shield / Key Icon Badge -->
-                                    <Border Width="64" Height="64" CornerRadius="32" Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" HorizontalAlignment="Center">
-                                        <TextBlock Text="🔑" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Text="No Keys in Vault" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" />
-                                    <TextBlock Text="Store your first API key, token, or secret with quantum-resistant encryption."
-                                               TextWrapping="Wrap" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" FontSize="13" />
-                                    
-                                    <!-- Action CTAs -->
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,12,0,0">
-                                        <Button Content="+ Add API Key" Command="{Binding OpenAddKeyDialogCommand}"
-                                                Classes="primary" Padding="18,10" />
-                                        <Button Content="Import from .env / JSON" Command="{Binding ImportKeysCommand}"
-                                                Classes="secondary" Padding="14,10" />
-                                    </StackPanel>
-                                </StackPanel>
                             </Border>
-                        </Border>
+                        </StackPanel>
 
-                        <!-- Key Selected Detail Pane -->
-                        <ScrollViewer IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}" Padding="28">
-                            <StackPanel Spacing="18">
-                                <!-- Title Header -->
-                                <StackPanel Spacing="4">
-                                    <TextBlock Text="{Binding SelectedEntry.Address}" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" />
-                                    <TextBlock Text="{Binding SelectedEntry.Comment}" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                </StackPanel>
+                        <!-- 2. Search Box in Sidebar -->
+                        <TextBox Grid.Row="1" Text="{Binding SearchText}"
+                                 Watermark="🔍 Search keys..."
+                                 Height="36" Margin="0,0,0,14"
+                                 AutomationProperties.AutomationId="Search.Box" />
 
-                                <!-- Secret Box with Reveal & Copy -->
-                                <Border Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14">
-                                    <Grid ColumnDefinitions="*, Auto, Auto">
-                                        <TextBlock Grid.Column="0" Text="{Binding RevealedSecret}" FontFamily="Consolas, monospace" FontSize="14" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" />
+                        <!-- 3. Primary CTA: Add Key -->
+                        <Button Grid.Row="2" Content="+ Add API Key" Command="{Binding OpenAddKeyDialogCommand}"
+                                Classes="primary" HorizontalAlignment="Stretch" Height="36" Margin="0,0,0,14"
+                                AutomationProperties.AutomationId="Nav.AddKey" />
 
-                                        <Button Grid.Column="1" Command="{Binding ToggleRevealSecretCommand}"
-                                                Classes="secondary" Margin="8,0" Height="36"
-                                                AutomationProperties.AutomationId="Entry.Reveal">
-                                            <TextBlock Text="👁 Reveal" />
-                                        </Button>
-
-                                        <Button Grid.Column="2" Content="📋 Copy" Command="{Binding CopySecretCommand}"
-                                                AutomationProperties.AutomationId="Entry.Copy" Classes="primary" Height="36" />
+                        <!-- 4. Navigation Categories & Providers List -->
+                        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Spacing="3">
+                                <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                        Command="{Binding SetFilterCommand}" CommandParameter="all"
+                                        AutomationProperties.AutomationId="Nav.AllKeys">
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <TextBlock Grid.Column="0" Text="🌐" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="All Keys" VerticalAlignment="Center" />
+                                        <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
+                                            <TextBlock Text="{Binding TotalKeysCount}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        </Border>
                                     </Grid>
-                                </Border>
+                                </Button>
 
-                                <!-- Actions Row -->
-                                <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <Button Content="✏️ Edit Key" Command="{Binding OpenEditKeyDialogCommand}"
-                                            Classes="secondary" Height="34"
-                                            AutomationProperties.AutomationId="Entry.Edit" />
-
-                                    <Button Content="✓ Test Key" Command="{Binding TestSelectedEntryCommand}"
-                                            Classes="secondary" Height="34"
-                                            AutomationProperties.AutomationId="Entry.Test" />
-
-                                    <Button Content="Copy as Command" Command="{Binding CopyAsCommandCommand}"
-                                            Classes="secondary" Height="34"
-                                            AutomationProperties.AutomationId="Entry.CopyCommand" />
-
-                                    <Button Content="🗑 Delete" Command="{Binding DeleteSelectedEntryCommand}"
-                                            Classes="danger" Height="34"
-                                            AutomationProperties.AutomationId="Entry.Delete" />
-                                </StackPanel>
-
-                                <Separator Margin="0,8" Background="{StaticResource BorderSubtleBrush}" />
-
-                                <!-- Metadata Properties Card -->
-                                <Border Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="16">
-                                    <Grid ColumnDefinitions="140, *" RowDefinitions="Auto, Auto, Auto, Auto">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Review Schedule:" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,6" />
-                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedEntry.ExpiryDescription}" Foreground="{StaticResource OnSurfaceBrush}" Margin="0,6" />
-
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Test Status:" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,6" />
-                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedEntry.TestStatusDescription}" Foreground="{StaticResource OnSurfaceBrush}" Margin="0,6" />
-
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Source:" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,6" />
-                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedEntry.Source}" Foreground="{StaticResource OnSurfaceBrush}" Margin="0,6" />
-
-                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Created Date:" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,6" />
-                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedEntry.Created, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Foreground="{StaticResource OnSurfaceBrush}" Margin="0,6" />
+                                <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                        Command="{Binding SetFilterCommand}" CommandParameter="attention"
+                                        AutomationProperties.AutomationId="Nav.Attention">
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <TextBlock Grid.Column="0" Text="⚠️" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="Attention" Foreground="{StaticResource StatusWarningBrush}" VerticalAlignment="Center" />
+                                        <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
+                                            <TextBlock Text="{Binding AttentionCount}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource StatusWarningBrush}" />
+                                        </Border>
                                     </Grid>
-                                </Border>
+                                </Button>
+
+                                <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                        Command="{Binding SetFilterCommand}" CommandParameter="production"
+                                        AutomationProperties.AutomationId="Nav.Production">
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <TextBlock Grid.Column="0" Text="💼" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="Production" VerticalAlignment="Center" />
+                                        <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
+                                            <TextBlock Text="{Binding ProductionCount}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        </Border>
+                                    </Grid>
+                                </Button>
+
+                                <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                        Command="{Binding SetFilterCommand}" CommandParameter="development"
+                                        AutomationProperties.AutomationId="Nav.Development">
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <TextBlock Grid.Column="0" Text="💻" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="Development" VerticalAlignment="Center" />
+                                        <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
+                                            <TextBlock Text="{Binding DevelopmentCount}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        </Border>
+                                    </Grid>
+                                </Button>
+
+                                <Separator Margin="0,10" Background="{StaticResource BorderSubtleBrush}" />
+                                <TextBlock Text="PLATFORMS" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="10" FontWeight="Bold" Margin="8,2" />
+
+                                <ItemsControl ItemsSource="{Binding ProviderFilters}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:ProviderFilterItemViewModel">
+                                            <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetFilterCommand}"
+                                                    CommandParameter="{Binding Name}">
+                                                <Grid ColumnDefinitions="Auto, *, Auto">
+                                                    <TextBlock Grid.Column="0" Text="●" FontSize="8" Foreground="{StaticResource PrimaryBrush}" Margin="2,0,8,0" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
+                                                        <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                                    </Border>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                         </ScrollViewer>
+
+                        <!-- 5. Bottom Utilities -->
+                        <StackPanel Grid.Row="4" Spacing="4" Margin="0,10,0,0">
+                            <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                    Command="{Binding SwitchVaultCommand}"
+                                    AutomationProperties.AutomationId="Nav.SwitchVault">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="📂" FontSize="12" VerticalAlignment="Center" />
+                                    <TextBlock Text="Switch Vault" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                    Command="{Binding LockCommand}"
+                                    AutomationProperties.AutomationId="Nav.Lock">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🔒" FontSize="12" VerticalAlignment="Center" />
+                                    <TextBlock Text="Lock Vault" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ==================== COLUMN 1: CENTER KEY TABLE ==================== -->
+                <Border Grid.Column="1" Background="{StaticResource SurfaceBaseBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0">
+                    <Grid RowDefinitions="Auto, *">
+                        <!-- Table Column Headers -->
+                        <Border Grid.Row="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="16,10">
+                            <Grid ColumnDefinitions="*, 90, 80, 80, 70">
+                                <TextBlock Grid.Column="0" Text="Key Name" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                <TextBlock Grid.Column="1" Text="Platform" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                <TextBlock Grid.Column="2" Text="Status" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                <TextBlock Grid.Column="3" Text="Environment" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                <TextBlock Grid.Column="4" Text="Expires" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Right" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Table Rows List -->
+                        <ListBox Grid.Row="1" ItemsSource="{Binding FilteredEntries}"
+                                 SelectedItem="{Binding SelectedEntry}"
+                                 Background="Transparent"
+                                 AutomationProperties.AutomationId="Entry.List">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="vm:EntryItemViewModel">
+                                    <Grid ColumnDefinitions="*, 90, 80, 80, 70" Margin="2,4">
+                                        <!-- Key Name & Subtitle -->
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,8,0">
+                                            <TextBlock Text="{Binding Address}" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Comment}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+
+                                        <!-- Platform Badge -->
+                                        <Border Grid.Column="1" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="6,2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding ProviderDisplayName}" FontSize="10" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceBrush}" />
+                                        </Border>
+
+                                        <!-- Status Dot + Text -->
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding StatusIcon}" Foreground="{Binding StatusColor}" FontSize="10" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontSize="11" VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <!-- Environment Pill -->
+                                        <Border Grid.Column="3" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="6,2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding EnvironmentTag}" FontSize="10" FontWeight="Bold" Foreground="{Binding EnvironmentTagColor}" />
+                                        </Border>
+
+                                        <!-- Expiry Description -->
+                                        <TextBlock Grid.Column="4" Text="{Binding ExpiryDescription}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <!-- ==================== COLUMN 2: RIGHT INSPECTOR PANEL ==================== -->
+                <Border Grid.Column="2" Background="{StaticResource SurfaceLowestBrush}" Padding="14" AutomationProperties.AutomationId="Detail.Pane">
+                    <Grid>
+                        <!-- Empty State Canvas (when 0 entries exist) -->
+                        <Border IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNull}}"
+                                Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <StackPanel Spacing="16" HorizontalAlignment="Center" MaxWidth="320">
+                                <Border Width="56" Height="56" CornerRadius="28" Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" HorizontalAlignment="Center">
+                                    <TextBlock Text="🔑" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="No Keys Selected" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" />
+                                <TextBlock Text="Create your first API key, or load sample keys to explore ApiKeyVault."
+                                           TextWrapping="Wrap" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" FontSize="12" />
+                                <StackPanel Spacing="10" Margin="0,8,0,0">
+                                    <Button Content="+ Add API Key" Command="{Binding OpenAddKeyDialogCommand}"
+                                            Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" />
+                                    <Button Content="✨ Load Sample Keys" Command="{Binding PopulateDemoKeysCommand}"
+                                            Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" />
+                                    <Button Content="Import from .env / JSON" Command="{Binding ImportKeysCommand}"
+                                            Classes="subtle" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Key Selected Inspector Card -->
+                        <Border IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Spacing="14">
+                                    <!-- Header: Large Green Dot + Title -->
+                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+                                        <TextBlock Text="●" FontSize="14" Foreground="{Binding SelectedEntry.StatusColor}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding SelectedEntry.Address}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+
+                                    <!-- Key ID Field -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Key ID" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        <TextBox Text="{Binding SelectedEntry.Address}" IsReadOnly="True" Height="34" FontFamily="Consolas, monospace" FontSize="12" />
+                                    </StackPanel>
+
+                                    <!-- Description Field -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Description" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        <TextBox Text="{Binding SelectedEntry.Comment}" IsReadOnly="True" Height="34" FontSize="12" />
+                                    </StackPanel>
+
+                                    <!-- Secret Field with Monospace & Reveal -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Secret" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <TextBox Grid.Column="0" Text="{Binding RevealedSecret}" IsReadOnly="True" Height="34" FontFamily="Consolas, monospace" FontSize="12" />
+                                            <Button Grid.Column="1" Command="{Binding ToggleRevealSecretCommand}"
+                                                    Classes="secondary" Margin="6,0,0,0" Height="34" Padding="10,0"
+                                                    AutomationProperties.AutomationId="Entry.Reveal">
+                                                <TextBlock Text="👁" FontSize="13" />
+                                            </Button>
+                                        </Grid>
+                                        <!-- Big Emerald Copy Key Button -->
+                                        <Button Content="Copy Key" Command="{Binding CopySecretCommand}"
+                                                Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="38" Margin="0,6,0,0"
+                                                AutomationProperties.AutomationId="Entry.Copy" FontWeight="SemiBold" FontSize="13" />
+                                        <TextBlock Text="Copied!" FontSize="11" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Center"
+                                                   IsVisible="{Binding ClipboardCountdownText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </StackPanel>
+
+                                    <!-- Metadata Properties -->
+                                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,4">
+                                        <Grid ColumnDefinitions="110, *" RowDefinitions="Auto, Auto, Auto">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Platform" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedEntry.ProviderDisplayName}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" />
+
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Environment" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedEntry.EnvironmentTag}" FontSize="11" Foreground="{Binding SelectedEntry.EnvironmentTagColor}" FontWeight="Bold" HorizontalAlignment="Right" Margin="0,3" />
+
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Last Used" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedEntry.TestStatusDescription}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Expiration Date Section -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Expiration Date" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        <CalendarDatePicker SelectedDate="{Binding KeyDialogExpiresDate}"
+                                                            Watermark="Select expiration..."
+                                                            HorizontalAlignment="Stretch" Height="34" />
+                                    </StackPanel>
+
+                                    <!-- Action Buttons -->
+                                    <Grid ColumnDefinitions="*, *" Margin="0,8,0,0">
+                                        <Button Grid.Column="0" Content="Revoke Key" Command="{Binding DeleteSelectedEntryCommand}"
+                                                Classes="danger" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Margin="0,0,4,0"
+                                                AutomationProperties.AutomationId="Entry.Delete" />
+                                        <Button Grid.Column="1" Content="Save Changes" Command="{Binding OpenEditKeyDialogCommand}"
+                                                Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Margin="4,0,0,0"
+                                                AutomationProperties.AutomationId="Entry.Edit" />
+                                    </Grid>
+
+                                    <!-- Secondary Utility Actions -->
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,4,0,0">
+                                        <Button Content="✓ Test Key" Command="{Binding TestSelectedEntryCommand}" Classes="subtle" FontSize="11" />
+                                        <Button Content="Copy as akv run" Command="{Binding CopyAsCommandCommand}" Classes="subtle" FontSize="11" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
                     </Grid>
                 </Border>
             </Grid>
 
-            <!-- Bottom Status Strip (28px height standard) -->
-            <Border Grid.Row="2" Height="28" Background="#040814" Padding="16,0" BorderBrush="rgba(255,255,255,0.05)" BorderThickness="0,1,0,0">
+            <!-- Bottom Status Strip -->
+            <Border Grid.Row="1" Height="26" Background="{StaticResource SurfaceLowestBrush}" Padding="16,0" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0">
                 <Grid ColumnDefinitions="Auto, *, Auto">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding ClipboardCountdownText}" Foreground="{StaticResource SecondaryBrush}"
-                                   IsVisible="{Binding ClipboardCountdownText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                   AutomationProperties.AutomationId="Status.Clipboard" FontSize="11" VerticalAlignment="Center" />
-                        <Button Content="Clear now" Command="{Binding ClearClipboardNowCommand}"
-                                IsVisible="{Binding ClipboardCountdownText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                Classes="secondary" AutomationProperties.AutomationId="Status.ClearNow" FontSize="10" Padding="6,1" />
-
-                        <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding ClipboardCountdownText, Converter={x:Static StringConverters.IsNullOrEmpty}}">
-                            <TextBlock Text="●" Foreground="{StaticResource PrimaryBrush}" FontSize="8" VerticalAlignment="Center" />
-                            <TextBlock Text="Cloud Sync: Encrypted &amp; Active" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" VerticalAlignment="Center" />
-                        </StackPanel>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Text="●" Foreground="{StaticResource PrimaryBrush}" FontSize="7" VerticalAlignment="Center" />
+                        <TextBlock Text="Encrypted &amp; Synced" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10" VerticalAlignment="Center" />
                     </StackPanel>
-
-                    <TextBlock Grid.Column="1" Text="{Binding LastSyncTimeText, StringFormat='Last synced at {0}'}" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center" />
-
-                    <TextBlock Grid.Column="2" Text="{Binding DeviceCountText, StringFormat='{}{0} · Synced'}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding LastSyncTimeText, StringFormat='Last synced at {0}'}" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding DeviceCountText, StringFormat='{}{0} · Online'}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10" VerticalAlignment="Center" />
                 </Grid>
             </Border>
         </Grid>
@@ -470,7 +537,7 @@
                     <!-- Secret Value -->
                     <StackPanel Spacing="4">
                         <TextBlock Text="API KEY / SECRET VALUE" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <TextBox Text="{Binding KeyDialogSecret}" Height="36" Watermark="sk-..." PasswordChar="•">
+                        <TextBox Text="{Binding KeyDialogSecret}" Height="36" Watermark="Enter secret key..." PasswordChar="•">
                             <TextBox.KeyBindings>
                                 <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
                                 <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
@@ -489,15 +556,25 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- Review Schedule Days -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="REVIEW SCHEDULE (DAYS, e.g. 90, 180, 0 = NONE)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <TextBox Text="{Binding KeyDialogExpiryDays}" Height="36">
-                            <TextBox.KeyBindings>
-                                <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
-                                <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
-                            </TextBox.KeyBindings>
-                        </TextBox>
+                    <!-- Expiration Date (Calendar Input) -->
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="EXPIRATION DATE (OPTIONAL)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                        <Grid ColumnDefinitions="*, Auto">
+                            <CalendarDatePicker Grid.Column="0"
+                                                SelectedDate="{Binding KeyDialogExpiresDate}"
+                                                Watermark="Pick expiration date..."
+                                                HorizontalAlignment="Stretch"
+                                                Height="36" />
+                            <Button Grid.Column="1" Content="Clear" Command="{Binding ClearExpirationDateCommand}"
+                                    Classes="secondary" Margin="8,0,0,0" Height="36" />
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                            <Button Content="+30d" Command="{Binding SetExpirationDaysCommand}" CommandParameter="30" Classes="subtle" FontSize="11" Padding="8,4" />
+                            <Button Content="+90d" Command="{Binding SetExpirationDaysCommand}" CommandParameter="90" Classes="subtle" FontSize="11" Padding="8,4" />
+                            <Button Content="+180d" Command="{Binding SetExpirationDaysCommand}" CommandParameter="180" Classes="subtle" FontSize="11" Padding="8,4" />
+                            <Button Content="+1 Year" Command="{Binding SetExpirationDaysCommand}" CommandParameter="365" Classes="subtle" FontSize="11" Padding="8,4" />
+                            <Button Content="No Expiry" Command="{Binding ClearExpirationDateCommand}" Classes="subtle" FontSize="11" Padding="8,4" />
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- Error Message -->

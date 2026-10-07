@@ -160,7 +160,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private string _keyDialogComment = string.Empty;
 
     [ObservableProperty]
-    private int _keyDialogExpiryDays = 90;
+    private DateTime? _keyDialogExpiresDate;
+
+    public int KeyDialogExpiryDays
+    {
+        get => KeyDialogExpiresDate.HasValue
+            ? Math.Max(0, (int)Math.Ceiling((KeyDialogExpiresDate.Value - DateTime.Today).TotalDays))
+            : 0;
+        set => KeyDialogExpiresDate = value > 0 ? DateTime.Today.AddDays(value) : null;
+    }
 
     [ObservableProperty]
     private string? _keyDialogErrorMessage;
@@ -797,6 +805,43 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private void PopulateDemoKeys()
+    {
+        if (_session == null) return;
+        try
+        {
+            var today = DateTimeOffset.UtcNow;
+            if (!_session.Payload.Entries.Any(e => e.Provider == "openai" && e.Name == "prod-key"))
+            {
+                _session.AddEntry("openai", "prod-key", "demo-openai-prod-key-12345", comment: "Primary API key", expires: today.AddDays(88));
+            }
+            if (!_session.Payload.Entries.Any(e => e.Provider == "stripe" && e.Name == "live-api"))
+            {
+                _session.AddEntry("stripe", "live-api", "demo-stripe-live-secret-67890", comment: "Production billing gateway", expires: today.AddDays(92));
+            }
+            if (!_session.Payload.Entries.Any(e => e.Provider == "anthropic" && e.Name == "beta-key"))
+            {
+                _session.AddEntry("anthropic", "beta-key", "demo-anthropic-beta-key-11223", comment: "Claude 3.5 Sonnet agent", expires: today.AddDays(3));
+            }
+            if (!_session.Payload.Entries.Any(e => e.Provider == "aws" && e.Name == "s3-access"))
+            {
+                _session.AddEntry("aws", "s3-access", "demo-aws-s3-access-key-44556", comment: "Asset storage bucket", expires: today.AddDays(180));
+            }
+            if (!_session.Payload.Entries.Any(e => e.Provider == "huggingface" && e.Name == "inference-api"))
+            {
+                _session.AddEntry("huggingface", "inference-api", "demo-hf-inference-token-77889", comment: "Open-source embedding models", expires: today.AddDays(45));
+            }
+            UpdateEntries();
+            SelectedEntry = FilteredEntries.FirstOrDefault();
+            SyncStatusText = "Loaded sample keys";
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = $"Could not load sample keys: {ex.Message}";
+        }
+    }
+
     // --- Add / Edit Key Dialog Commands ---
 
     [RelayCommand]
@@ -808,7 +853,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         KeyDialogAddress = string.Empty;
         KeyDialogSecret = string.Empty;
         KeyDialogComment = string.Empty;
-        KeyDialogExpiryDays = 90;
+        KeyDialogExpiresDate = null;
         KeyDialogErrorMessage = null;
         IsAddKeyDialogOpen = true;
     }
@@ -824,14 +869,36 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         KeyDialogSecret = SelectedEntry.Entry.Secret;
         KeyDialogComment = SelectedEntry.Comment ?? string.Empty;
 
-        int days = 0;
-        if (SelectedEntry.Entry.ReviewBy.HasValue)
+        if (SelectedEntry.Entry.Expires.HasValue)
         {
-            days = Math.Max(0, (int)Math.Ceiling((SelectedEntry.Entry.ReviewBy.Value - DateTimeOffset.UtcNow).TotalDays));
+            KeyDialogExpiresDate = SelectedEntry.Entry.Expires.Value.LocalDateTime.Date;
         }
-        KeyDialogExpiryDays = days > 0 ? days : 90;
+        else if (SelectedEntry.Entry.ReviewBy.HasValue)
+        {
+            KeyDialogExpiresDate = SelectedEntry.Entry.ReviewBy.Value.LocalDateTime.Date;
+        }
+        else
+        {
+            KeyDialogExpiresDate = null;
+        }
+
         KeyDialogErrorMessage = null;
         IsAddKeyDialogOpen = true;
+    }
+
+    [RelayCommand]
+    private void ClearExpirationDate()
+    {
+        KeyDialogExpiresDate = null;
+    }
+
+    [RelayCommand]
+    private void SetExpirationDays(string daysStr)
+    {
+        if (int.TryParse(daysStr, out int days) && days > 0)
+        {
+            KeyDialogExpiresDate = DateTime.Today.AddDays(days);
+        }
     }
 
     [RelayCommand]
@@ -875,8 +942,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             name = address;
         }
 
-        DateTimeOffset? reviewBy = KeyDialogExpiryDays > 0
-            ? DateTimeOffset.UtcNow.AddDays(KeyDialogExpiryDays)
+        DateTimeOffset? expires = KeyDialogExpiresDate.HasValue
+            ? new DateTimeOffset(KeyDialogExpiresDate.Value.Date.AddDays(1).AddSeconds(-1), DateTimeOffset.Now.Offset)
             : null;
 
         try
@@ -886,11 +953,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 var existing = _session.Payload.Entries.FirstOrDefault(e => e.Id == KeyDialogEditingId);
                 if (existing != null)
                 {
+                    existing.Expires = expires;
+                    existing.ReviewBy = expires;
+
                     _session.EditEntry(
                         existing.Id,
                         newName: name,
                         newComment: string.IsNullOrWhiteSpace(KeyDialogComment) ? null : KeyDialogComment.Trim(),
-                        newReviewBy: reviewBy);
+                        newExpires: expires,
+                        newReviewBy: expires);
 
                     if (secret != existing.Secret)
                     {
@@ -910,7 +981,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     name: name,
                     secret: secret,
                     comment: string.IsNullOrWhiteSpace(KeyDialogComment) ? null : KeyDialogComment.Trim(),
-                    reviewBy: reviewBy);
+                    expires: expires,
+                    reviewBy: expires);
 
                 UpdateEntries();
                 SelectedEntry = FilteredEntries.FirstOrDefault(e => e.Id == added.Id);

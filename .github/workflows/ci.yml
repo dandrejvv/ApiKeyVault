@@ -1,0 +1,30 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build & Run Tests
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore Dependencies
+      run: dotnet restore ApiKeyVault.slnx
+
+    - name: Build Solution
+      run: dotnet build ApiKeyVault.slnx -c Release --no-restore
+
+    - name: Run Test Suites
+      run: dotnet test ApiKeyVault.slnx -c Release --no-build --verbosity normal -p:UseSharedCompilation=false

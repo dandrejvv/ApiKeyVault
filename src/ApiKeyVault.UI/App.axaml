@@ -5,13 +5,13 @@
 
     <Application.Resources>
         <!-- Obsidian Vault v2 Elevation & Palette Tokens -->
-        <Color x:Key="SurfaceLowestColor">#060d20</Color>
-        <Color x:Key="SurfaceBaseColor">#0b1326</Color>
-        <Color x:Key="SurfaceContainerColor">#121d38</Color>
-        <Color x:Key="SurfaceContainerHighColor">#182548</Color>
-        <Color x:Key="SurfaceContainerHighestColor">#202f5a</Color>
+        <Color x:Key="SurfaceLowestColor">#090d16</Color>
+        <Color x:Key="SurfaceBaseColor">#0c101a</Color>
+        <Color x:Key="SurfaceContainerColor">#101625</Color>
+        <Color x:Key="SurfaceContainerHighColor">#141d2f</Color>
+        <Color x:Key="SurfaceContainerHighestColor">#18243a</Color>
 
-        <Color x:Key="BorderSubtleColor">#1a2542</Color>
+        <Color x:Key="BorderSubtleColor">#1b253b</Color>
         <Color x:Key="BorderFocusColor">#10b981</Color>
         <Color x:Key="BorderAccentColor">#3310b981</Color>
 
@@ -137,6 +137,50 @@
             <Setter Property="CaretBrush" Value="{StaticResource PrimaryBrush}" />
         </Style>
         <Style Selector="TextBox:focus">
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+        </Style>
+
+        <!-- CalendarDatePicker -->
+        <Style Selector="CalendarDatePicker">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
+            <Setter Property="BorderBrush" Value="rgba(255, 255, 255, 0.10)" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="CalendarDatePicker:focus">
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+        </Style>
+
+        <!-- ListBox and ListBoxItem Obsidian Selection -->
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Margin" Value="4,2" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+        </Style>
+        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#141f36" />
+            <Setter Property="BorderBrush" Value="rgba(255, 255, 255, 0.08)" />
+        </Style>
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#162544" />
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#1c2d52" />
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+        </Style>
+        <Style Selector="ListBoxItem:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#162544" />
             <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
         </Style>
 

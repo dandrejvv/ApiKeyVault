@@ -69,6 +69,61 @@ public sealed partial class EntryItemViewModel : ObservableObject
         }
     }
 
+    public string StatusText => Status switch
+    {
+        KeyStatus.Ok => "active",
+        KeyStatus.Due => "expiring",
+        KeyStatus.Expired => "expired",
+        KeyStatus.Failing => "failing",
+        _ => "active"
+    };
+
+    public string EnvironmentTag
+    {
+        get
+        {
+            if (Name.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
+                Address.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
+                Address.Contains("live", StringComparison.OrdinalIgnoreCase))
+            {
+                return "PROD";
+            }
+            if (Name.Contains("stag", StringComparison.OrdinalIgnoreCase) ||
+                Address.Contains("stag", StringComparison.OrdinalIgnoreCase))
+            {
+                return "STAGING";
+            }
+            return "DEV";
+        }
+    }
+
+    public string EnvironmentTagColor => EnvironmentTag switch
+    {
+        "PROD" => "#10b981",
+        "STAGING" => "#f59e0b",
+        _ => "#60a5fa"
+    };
+
+    public string ProviderDisplayName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Provider)) return "Other";
+            return Provider switch
+            {
+                "openai" => "OpenAI",
+                "anthropic" => "Anthropic",
+                "openrouter" => "OpenRouter",
+                "azure" => "Azure",
+                "gemini" => "Gemini",
+                "stripe" => "Stripe",
+                "aws" => "AWS",
+                "github" => "GitHub",
+                _ => char.ToUpper(Provider[0]) + Provider.Substring(1)
+            };
+        }
+    }
+
     public EntryItemViewModel(VaultEntry entry)
     {
         Entry = entry;

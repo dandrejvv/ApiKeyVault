@@ -78,7 +78,7 @@ public class CliCommandTests : IDisposable
             Json = true
         };
 
-        using var reader = new StringReader("Password123!\nsk-proj-test1234567890\n");
+        using var reader = new StringReader("Password123!\nmock-openai-cli-token-12345\n");
         Console.SetIn(reader);
 
         int exitCode = cmd.Execute(null!, settings, CancellationToken.None);
@@ -102,7 +102,7 @@ public class CliCommandTests : IDisposable
             PassphraseStdin = true,
             NoInput = true
         };
-        using (var reader = new StringReader("Password123!\nsk-proj-test1234567890\n"))
+        using (var reader = new StringReader("Password123!\nmock-openai-cli-token-12345\n"))
         {
             Console.SetIn(reader);
             addCmd.Execute(null!, addSettings, CancellationToken.None);
@@ -141,7 +141,7 @@ public class CliCommandTests : IDisposable
             PassphraseStdin = true,
             NoInput = true
         };
-        using (var reader = new StringReader("Password123!\nsk-proj-test1234567890\n"))
+        using (var reader = new StringReader("Password123!\nmock-openai-cli-token-12345\n"))
         {
             Console.SetIn(reader);
             addCmd.Execute(null!, addSettings, CancellationToken.None);
