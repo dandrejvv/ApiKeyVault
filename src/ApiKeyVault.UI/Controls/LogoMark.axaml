@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ApiKeyVault.UI.Controls.LogoMark"
+             Width="32" Height="32">
+    <!-- ApiKeyVault brand mark: emerald tile, obsidian shield, glowing keyhole. 64×64 design grid. -->
+    <Viewbox Stretch="Uniform">
+        <Canvas Width="64" Height="64">
+            <Rectangle Width="64" Height="64" RadiusX="16" RadiusY="16">
+                <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Offset="0" Color="#6ee7b7" />
+                        <GradientStop Offset="0.45" Color="#10b981" />
+                        <GradientStop Offset="1" Color="#047857" />
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+
+            <!-- Top sheen -->
+            <Path Data="M16 0H48A16 16 0 0 1 64 16V22C44 30 20 30 0 24V16A16 16 0 0 1 16 0Z">
+                <Path.Fill>
+                    <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                        <GradientStop Offset="0" Color="#40ffffff" />
+                        <GradientStop Offset="1" Color="#00ffffff" />
+                    </LinearGradientBrush>
+                </Path.Fill>
+            </Path>
+
+            <!-- Shield -->
+            <Path Data="M32 11 L48 17 V30 C48 41 41 48.5 32 53 C23 48.5 16 41 16 30 V17 Z"
+                  Fill="#0a1a17" Stroke="#1affffff" StrokeThickness="1" />
+
+            <!-- Keyhole -->
+            <Path Data="M32 23 A5.5 5.5 0 0 1 35 33.1 L36.2 41 H27.8 L29 33.1 A5.5 5.5 0 0 1 32 23 Z">
+                <Path.Fill>
+                    <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                        <GradientStop Offset="0" Color="#a7f3d0" />
+                        <GradientStop Offset="1" Color="#10b981" />
+                    </LinearGradientBrush>
+                </Path.Fill>
+            </Path>
+        </Canvas>
+    </Viewbox>
+</UserControl>

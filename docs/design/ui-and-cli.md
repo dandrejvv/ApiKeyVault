@@ -1,7 +1,7 @@
 
 # ApiKeyVault — UI & CLI Design
 
-> **Status:** Draft from design discussion, 2026-10-05; revised 2026-10-06 after review. Scope: what the user can do with ApiKeyVault (use cases), and how each use case works in the CLI (`akv`, Spectre.Console) and the desktop UI (Avalonia). Cryptography and storage are covered in `crypto-and-persistence.md`, referred to below as *Crypto §n*.
+> **Status:** Draft from design discussion, 2026-10-05; revised 2026-10-06 after review; §7.4 as-built UI notes added 2026-10-08. Scope: what the user can do with ApiKeyVault (use cases), and how each use case works in the CLI (`akv`, Spectre.Console) and the desktop UI (Avalonia). Cryptography and storage are covered in `crypto-and-persistence.md`, referred to below as *Crypto §n*.
 
 ## 1. Context
 
@@ -561,6 +561,18 @@ flowchart LR
 | Ctrl+L | Lock |
 | Ctrl+, | Settings |
 
+### 7.4 As built (Obsidian Vault v2)
+
+The mock-up in §7.2 is the target. The current build differs in these ways:
+
+- **Theme:** dark only (`RequestedThemeVariant="Dark"`). The Fluent accent is set to emerald, and Fluent's hover/focus resources are overridden so built-in controls stay on-palette. All tokens and styles are in `App.axaml`.
+- **Sidebar:** logo, active vault (with unlocked state), search (`Ctrl+K`), *Add API Key*, then *All Keys* and *Needs Attention* with counts, a **Tags** section and a **Platforms** section. The active filter is highlighted. *Switch Vault* and a lock button sit at the bottom.
+- **List:** a title showing the current filter and key count, then columns *Key* (provider tile + `provider/name` + comment), *Status* (coloured pill), *Tags* and *Expires* (amber when due, red when expired). Below ~540 px the Tags column hides; below ~420 px the status pill collapses to a dot.
+- **Details:** provider tile, address and status pill; expiring / compromised / revoked banners; secret field with an inline reveal toggle and a *Copy Key* button (clipboard countdown shown underneath); a details card; a *Compromised* flag; *Revoke* / *Edit*; then *Test*, *akv run* and *Delete*.
+- **Empty states:** an empty vault shows an illustration with *Add API Key*, *Import .env / JSON* and *Sample keys*. A search or filter with no results shows *Clear filters*.
+- **Icons and branding:** emoji aren't used. Icons are stroke paths on a 24×24 grid (`Icon.*` resources) drawn by `Controls/Icon.cs`. The brand mark is `Controls/LogoMark.axaml`, and `Assets/app.ico` is rendered from it.
+- **Shortcuts implemented so far:** `Ctrl+K`, and `Enter` / `Esc` in the unlock screen, first-run wizard and add/edit dialog. The rest of §7.3 is still to do.
+
 ## 8. Secret handling in the interfaces
 
 **Requirement on the core:** whole-file encryption would put every secret in memory as plain text while the vault is open. Instead, the core keeps secrets **sealed in memory** (Crypto §10), and the file format doesn't change:
@@ -596,7 +608,7 @@ flowchart LR
 |---|---|---|
 | Core | xUnit | Crypto, storage, merge and presets (Crypto §14) |
 | View models | xUnit + CommunityToolkit.Mvvm | Every UI use case's logic, without the UI: add, copy and countdown, lock on idle, rotate wizard steps, attention rules |
-| UI (headless) | **Avalonia.Headless.XUnit** | Real windows rendered in memory: clicks, typing, focus, keyboard shortcuts. Screenshot output for visual checks, including by an AI agent reading the images |
+| UI (headless) | **Avalonia.Headless.XUnit** | Real windows rendered in memory: clicks, typing, focus, keyboard shortcuts. Screenshot output for visual checks, including by an AI agent reading the images. `HeadlessVisualTests` writes PNGs to `AKV_SCREENSHOT_DIR` (default `%TEMP%/AkvScreenshots`) |
 | CLI | **Spectre.Console.Testing** (`CommandAppTester`, `TestConsole`) | Commands, prompts, tables, exit codes, `--json` output |
 | End-to-end smoke (Windows) | FlaUI (UI Automation) | Start the real app, unlock, find a key, copy it, check the clipboard is cleared |
 

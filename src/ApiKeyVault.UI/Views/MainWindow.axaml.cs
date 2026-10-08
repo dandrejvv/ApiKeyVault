@@ -14,6 +14,26 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (e.Key == Key.K && e.KeyModifiers.HasFlag(KeyModifiers.Control)
+            && DataContext is MainWindowViewModel { IsUnlocked: true, IsAddKeyDialogOpen: false })
+        {
+            SearchBox.Focus();
+            SearchBox.SelectAll();
+            e.Handled = true;
+            return;
+        }
+
+        base.OnKeyDown(e);
+    }
+
+    private void OnListPaneSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        ListPane.Classes.Set("compact", e.NewSize.Width < 540);
+        ListPane.Classes.Set("narrow", e.NewSize.Width < 420);
+    }
+
     private void OnEntryListTapped(object? sender, TappedEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)

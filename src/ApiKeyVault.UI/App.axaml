@@ -5,25 +5,27 @@
 
     <Application.Resources>
         <!-- Obsidian Vault v2 Elevation & Palette Tokens -->
-        <Color x:Key="SurfaceLowestColor">#090d16</Color>
-        <Color x:Key="SurfaceBaseColor">#0c101a</Color>
-        <Color x:Key="SurfaceContainerColor">#101625</Color>
-        <Color x:Key="SurfaceContainerHighColor">#141d2f</Color>
-        <Color x:Key="SurfaceContainerHighestColor">#18243a</Color>
+        <Color x:Key="SurfaceLowestColor">#080c14</Color>
+        <Color x:Key="SurfaceBaseColor">#0b1019</Color>
+        <Color x:Key="SurfaceContainerColor">#0f1522</Color>
+        <Color x:Key="SurfaceContainerHighColor">#141c2c</Color>
+        <Color x:Key="SurfaceContainerHighestColor">#1a2438</Color>
 
-        <Color x:Key="BorderSubtleColor">#1b253b</Color>
+        <Color x:Key="BorderSubtleColor">#1a2334</Color>
+        <Color x:Key="BorderStrongColor">#26324a</Color>
         <Color x:Key="BorderFocusColor">#10b981</Color>
         <Color x:Key="BorderAccentColor">#3310b981</Color>
 
         <Color x:Key="PrimaryColor">#10b981</Color>
-        <Color x:Key="PrimaryHoverColor">#059669</Color>
-        <Color x:Key="OnPrimaryColor">#020617</Color>
-        <Color x:Key="PrimarySurfaceColor">#1f10b981</Color>
+        <Color x:Key="PrimaryHoverColor">#34d399</Color>
+        <Color x:Key="PrimaryPressedColor">#059669</Color>
+        <Color x:Key="OnPrimaryColor">#03140e</Color>
+        <Color x:Key="PrimarySurfaceColor">#1a10b981</Color>
 
         <Color x:Key="SecondaryColor">#4edea3</Color>
-        <Color x:Key="OnSurfaceColor">#f1f5f9</Color>
+        <Color x:Key="OnSurfaceColor">#eef2f7</Color>
         <Color x:Key="OnSurfaceMutedColor">#94a3b8</Color>
-        <Color x:Key="OnSurfaceDimColor">#64748b</Color>
+        <Color x:Key="OnSurfaceDimColor">#5b6b82</Color>
 
         <Color x:Key="StatusDangerColor">#f43f5e</Color>
         <Color x:Key="StatusWarningColor">#f59e0b</Color>
@@ -36,11 +38,13 @@
         <SolidColorBrush x:Key="SurfaceContainerHighestBrush" Color="{StaticResource SurfaceContainerHighestColor}" />
 
         <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource BorderSubtleColor}" />
+        <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource BorderStrongColor}" />
         <SolidColorBrush x:Key="BorderFocusBrush" Color="{StaticResource BorderFocusColor}" />
         <SolidColorBrush x:Key="BorderAccentBrush" Color="{StaticResource BorderAccentColor}" />
 
         <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}" />
         <SolidColorBrush x:Key="PrimaryHoverBrush" Color="{StaticResource PrimaryHoverColor}" />
+        <SolidColorBrush x:Key="PrimaryPressedBrush" Color="{StaticResource PrimaryPressedColor}" />
         <SolidColorBrush x:Key="OnPrimaryBrush" Color="{StaticResource OnPrimaryColor}" />
         <SolidColorBrush x:Key="PrimarySurfaceBrush" Color="{StaticResource PrimarySurfaceColor}" />
 
@@ -52,136 +56,384 @@
         <SolidColorBrush x:Key="StatusDangerBrush" Color="{StaticResource StatusDangerColor}" />
         <SolidColorBrush x:Key="StatusWarningBrush" Color="{StaticResource StatusWarningColor}" />
         <SolidColorBrush x:Key="StatusNeutralBrush" Color="{StaticResource StatusNeutralColor}" />
+
+        <!-- Transparent tinted like the surface, so brush transitions don't fade through white -->
+        <SolidColorBrush x:Key="ClearSurfaceBrush" Color="#000f1522" />
+        <SolidColorBrush x:Key="DangerSurfaceBrush" Color="#1af43f5e" />
+        <SolidColorBrush x:Key="DangerBorderBrush" Color="#4df43f5e" />
+        <SolidColorBrush x:Key="WarningSurfaceBrush" Color="#1af59e0b" />
+        <SolidColorBrush x:Key="WarningBorderBrush" Color="#4df59e0b" />
+
+        <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Menlo, monospace</FontFamily>
+
+        <!-- Fluent overrides so built-in hover/focus states stay on-palette -->
+        <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#172033" />
+        <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#0d1320" />
+        <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="{StaticResource BorderStrongColor}" />
+        <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{StaticResource PrimaryColor}" />
+        <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="{StaticResource OnSurfaceColor}" />
+        <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{StaticResource OnSurfaceColor}" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="{StaticResource OnSurfaceDimColor}" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="{StaticResource OnSurfaceDimColor}" />
+        <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="{StaticResource OnSurfaceDimColor}" />
+        <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+
+        <SolidColorBrush x:Key="ToolTipBackground" Color="{StaticResource SurfaceContainerHighestColor}" />
+        <SolidColorBrush x:Key="ToolTipForeground" Color="{StaticResource OnSurfaceColor}" />
+        <SolidColorBrush x:Key="ToolTipBorderBrush" Color="{StaticResource BorderStrongColor}" />
+
+        <!-- Line icons, 24×24 grid, stroke-drawn by Controls.Icon -->
+        <StreamGeometry x:Key="Icon.Lock">M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2H7a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2z M8 11V7a4 4 0 0 1 8 0v4</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Unlock">M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2H7a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2z M8 11V7a4 4 0 0 1 7.75 -1.4</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Shield">M12 22s8 -4 8 -10V5l-8 -3l-8 3v7c0 6 8 10 8 10z</StreamGeometry>
+        <StreamGeometry x:Key="Icon.ShieldCheck">M12 22s8 -4 8 -10V5l-8 -3l-8 3v7c0 6 8 10 8 10z M9 12l2 2l4 -4</StreamGeometry>
+        <StreamGeometry x:Key="Icon.ShieldAlert">M12 22s8 -4 8 -10V5l-8 -3l-8 3v7c0 6 8 10 8 10z M12 8v4 M12 16h0.01</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Key">M2.5 15.5a5 5 0 1 0 10 0a5 5 0 1 0 -10 0 M11.1 11.9L21 2 M15.5 7.5l3 3L22 7l-3 -3</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Search">M4 11a7 7 0 1 0 14 0a7 7 0 1 0 -14 0 M21 21l-4.35 -4.35</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Plus">M12 5v14 M5 12h14</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Folder">M3 7a2 2 0 0 1 2 -2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2z</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Eye">M2 12s3.5 -7 10 -7s10 7 10 7s-3.5 7 -10 7s-10 -7 -10 -7z M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0</StreamGeometry>
+        <StreamGeometry x:Key="Icon.EyeOff">M3 3l18 18 M10.6 5.1A9.7 9.7 0 0 1 12 5c6.5 0 10 7 10 7a16.6 16.6 0 0 1 -2.7 3.5 M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.7 0 3.2 -0.4 4.5 -1.1 M9.9 9.9a3 3 0 0 0 4.2 4.2</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Copy">M11 9h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2v-8a2 2 0 0 1 2 -2z M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Trash">M3 6h18 M8 6V4a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1v2 M19 6l-1 14a2 2 0 0 1 -2 2H8a2 2 0 0 1 -2 -2L5 6 M10 11v6 M14 11v6</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Check">M20 6L9 17l-5 -5</StreamGeometry>
+        <StreamGeometry x:Key="Icon.X">M18 6L6 18 M6 6l12 12</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Alert">M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7 -3L13.7 3.9a2 2 0 0 0 -3.4 0z M12 9v4 M12 17h0.01</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Layers">M12 2L2 7l10 5l10 -5z M2 17l10 5l10 -5 M2 12l10 5l10 -5</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Hash">M4 9h16 M4 15h16 M10 3L8 21 M16 3l-2 18</StreamGeometry>
+        <StreamGeometry x:Key="Icon.PanelRight">M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2z M15 3v18</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Terminal">M4 17l6 -6l-6 -6 M12 19h8</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Activity">M22 12h-4l-3 9L9 3l-3 9H2</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Ban">M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M4.9 4.9l14.2 14.2</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Undo">M3 7v6h6 M21 17a9 9 0 0 0 -15 -6.7L3 13</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Pencil">M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5L2 22l1.5 -5.5z</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Refresh">M21 12a9 9 0 0 1 -15.5 6.2L3 16 M3 12a9 9 0 0 1 15.5 -6.2L21 8 M21 3v5h-5 M3 21v-5h5</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Monitor">M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2H4a2 2 0 0 1 -2 -2V5a2 2 0 0 1 2 -2z M8 21h8 M12 17v4</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Sparkles">M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9 -5.1L5 10l5.1 -1.9z M19 15l0.8 2.2L22 18l-2.2 0.8L19 21l-0.8 -2.2L16 18l2.2 -0.8z</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Import">M21 15v4a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2v-4 M7 10l5 5l5 -5 M12 15V3</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Database">M4 5a8 3 0 1 0 16 0a8 3 0 1 0 -16 0 M4 5v14a8 3 0 0 0 16 0V5 M4 12a8 3 0 0 0 16 0</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Calendar">M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2V6a2 2 0 0 1 2 -2z M16 2v4 M8 2v4 M3 10h18</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Clock">M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0 M12 6v6l4 2</StreamGeometry>
+        <StreamGeometry x:Key="Icon.Cpu">M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2H6a2 2 0 0 1 -2 -2V6a2 2 0 0 1 2 -2z M9 9h6v6H9z M9 1v3 M15 1v3 M9 20v3 M15 20v3 M20 9h3 M20 14h3 M1 9h3 M1 14h3</StreamGeometry>
+        <StreamGeometry x:Key="Icon.FilterX">M3 4h18l-7 8.5V19l-4 2v-8.5z</StreamGeometry>
     </Application.Resources>
 
     <Application.Styles>
-        <FluentTheme />
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Dark" Accent="#10b981" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
+
+        <!-- ====================== Typography helpers ====================== -->
+        <Style Selector="TextBlock.label">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="10.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="0.6" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceMutedBrush}" />
+        </Style>
+        <Style Selector="TextBlock.section">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceDimBrush}" />
+            <Setter Property="Margin" Value="10,2,0,6" />
+        </Style>
+        <Style Selector="TextBlock.helper">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceDimBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- ====================== Surfaces ====================== -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="16" />
+        </Style>
+        <Style Selector="Border.elevated">
+            <Setter Property="BoxShadow" Value="0 24 64 0 #a0000000, 0 2 6 0 #40000000" />
+        </Style>
+        <Style Selector="Border.well">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+        <Style Selector="Border.count">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="7,1" />
+            <Setter Property="MinWidth" Value="22" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.count > TextBlock">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceMutedBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.count.warn">
+            <Setter Property="Background" Value="{StaticResource WarningSurfaceBrush}" />
+        </Style>
+        <Style Selector="Border.count.warn > TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource StatusWarningBrush}" />
+        </Style>
+        <Style Selector="Border.kbd">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighestBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+            <Setter Property="BorderThickness" Value="1,1,1,2" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.kbd > TextBlock">
+            <Setter Property="FontSize" Value="9.5" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceDimBrush}" />
+        </Style>
+        <Style Selector="Border.iconTile">
+            <Setter Property="Background" Value="{StaticResource PrimarySurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderAccentBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="TextElement.Foreground" Value="{StaticResource SecondaryBrush}" />
+        </Style>
+        <Style Selector="Border.banner">
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="12,10" />
+        </Style>
+        <Style Selector="Border.banner.danger">
+            <Setter Property="Background" Value="{StaticResource DangerSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource DangerBorderBrush}" />
+        </Style>
+        <Style Selector="Border.banner.warning">
+            <Setter Property="Background" Value="{StaticResource WarningSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource WarningBorderBrush}" />
+        </Style>
+        <Style Selector="Border.banner.neutral">
+            <Setter Property="Background" Value="#1494a3b8" />
+            <Setter Property="BorderBrush" Value="#3394a3b8" />
+        </Style>
+
+        <!-- ====================== Buttons ====================== -->
+        <Style Selector="Button">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.12" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                </Transitions>
+            </Setter>
+        </Style>
 
         <!-- Primary Emerald Action Button -->
         <Style Selector="Button.primary, Button.accent">
             <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
             <Setter Property="Foreground" Value="{StaticResource OnPrimaryBrush}" />
-            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="9" />
             <Setter Property="Padding" Value="16,9" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.primary:pointerover, Button.accent:pointerover">
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource PrimaryHoverBrush}" />
             <Setter Property="Foreground" Value="{StaticResource OnPrimaryBrush}" />
         </Style>
-        <Style Selector="Button.primary:pressed, Button.accent:pressed">
-            <Setter Property="Background" Value="#047857" />
+        <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource PrimaryPressedBrush}" />
             <Setter Property="Foreground" Value="{StaticResource OnPrimaryBrush}" />
+        </Style>
+        <Style Selector="Button.primary:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource PrimarySurfaceBrush}" />
+            <Setter Property="Foreground" Value="#8010b981" />
         </Style>
 
         <!-- Secondary Ghost Action Button -->
         <Style Selector="Button.secondary, Button.ghost">
             <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
             <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="9" />
             <Setter Property="Padding" Value="12,6" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontWeight" Value="Medium" />
         </Style>
-        <Style Selector="Button.secondary:pointerover, Button.ghost:pointerover">
+        <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceContainerHighestBrush}" />
-            <Setter Property="BorderBrush" Value="rgba(255, 255, 255, 0.18)" />
+            <Setter Property="BorderBrush" Value="#3a4a66" />
             <Setter Property="Foreground" Value="#ffffff" />
+        </Style>
+        <Style Selector="Button.secondary:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.ghost:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerBrush}" />
         </Style>
 
         <!-- Danger Button -->
         <Style Selector="Button.danger">
-            <Setter Property="Background" Value="rgba(244, 63, 94, 0.12)" />
+            <Setter Property="Background" Value="{StaticResource DangerSurfaceBrush}" />
             <Setter Property="Foreground" Value="{StaticResource StatusDangerBrush}" />
-            <Setter Property="BorderBrush" Value="rgba(244, 63, 94, 0.30)" />
+            <Setter Property="BorderBrush" Value="{StaticResource DangerBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="9" />
             <Setter Property="Padding" Value="12,6" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Cursor" Value="Hand" />
         </Style>
-        <Style Selector="Button.danger:pointerover">
-            <Setter Property="Background" Value="rgba(244, 63, 94, 0.22)" />
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#33f43f5e" />
+            <Setter Property="BorderBrush" Value="#80f43f5e" />
+            <Setter Property="Foreground" Value="#fb7185" />
         </Style>
 
         <!-- Subtle Text Link / Utility Button -->
         <Style Selector="Button.subtle">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{StaticResource ClearSurfaceBrush}" />
             <Setter Property="Foreground" Value="{StaticResource OnSurfaceMutedBrush}" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="CornerRadius" Value="7" />
             <Setter Property="Padding" Value="8,5" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Cursor" Value="Hand" />
         </Style>
-        <Style Selector="Button.subtle:pointerover">
+        <Style Selector="Button.subtle:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
             <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
         </Style>
+        <Style Selector="Button.subtle:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerBrush}" />
+        </Style>
+        <Style Selector="Button.subtle.dangerText">
+            <Setter Property="Foreground" Value="#e11d48" />
+        </Style>
+        <Style Selector="Button.subtle.dangerText:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DangerSurfaceBrush}" />
+            <Setter Property="Foreground" Value="#fb7185" />
+        </Style>
 
-        <!-- Standard High-Elevation TextBoxes -->
+        <!-- Sidebar navigation item -->
+        <Style Selector="Button.nav">
+            <Setter Property="Background" Value="{StaticResource ClearSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceMutedBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+        </Style>
+        <Style Selector="Button.nav.active">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.nav.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighestBrush}" />
+        </Style>
+
+        <!-- Pill chips (e.g. expiry presets) -->
+        <Style Selector="Button.chip">
+            <Setter Property="Background" Value="{StaticResource ClearSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceMutedBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+        <Style Selector="Button.chip:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource PrimarySurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="#8010b981" />
+            <Setter Property="Foreground" Value="{StaticResource SecondaryBrush}" />
+        </Style>
+
+        <!-- ====================== Inputs ====================== -->
         <Style Selector="TextBox">
             <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
-            <Setter Property="BorderBrush" Value="rgba(255, 255, 255, 0.10)" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Padding" Value="11,8" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="SelectionBrush" Value="rgba(16, 185, 129, 0.30)" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="SelectionBrush" Value="#4d10b981" />
             <Setter Property="CaretBrush" Value="{StaticResource PrimaryBrush}" />
         </Style>
-        <Style Selector="TextBox:focus">
-            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BoxShadow" Value="0 0 0 3 #2610b981" />
+        </Style>
+        <Style Selector="TextBox.mono">
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}" />
+            <Setter Property="FontSize" Value="12.5" />
         </Style>
 
-        <!-- CalendarDatePicker -->
         <Style Selector="CalendarDatePicker">
             <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
-            <Setter Property="BorderBrush" Value="rgba(255, 255, 255, 0.10)" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="9" />
             <Setter Property="FontSize" Value="13" />
         </Style>
         <Style Selector="CalendarDatePicker:focus">
             <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
         </Style>
 
-        <!-- ListBox and ListBoxItem Obsidian Selection -->
+        <Style Selector="Separator">
+            <Setter Property="Background" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="Height" Value="1" />
+            <Setter Property="MinHeight" Value="1" />
+            <Setter Property="Margin" Value="0" />
+        </Style>
+
+        <!-- ====================== Lists ====================== -->
         <Style Selector="ListBox">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{StaticResource ClearSurfaceBrush}" />
         </Style>
         <Style Selector="ListBoxItem">
-            <Setter Property="Padding" Value="10,8" />
-            <Setter Property="Margin" Value="4,2" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="10,9" />
+            <Setter Property="Margin" Value="8,2" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{StaticResource ClearSurfaceBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.1" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#141f36" />
-            <Setter Property="BorderBrush" Value="rgba(255, 255, 255, 0.08)" />
+            <Setter Property="Background" Value="#0cffffff" />
+            <Setter Property="BorderBrush" Value="#12ffffff" />
         </Style>
         <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#162544" />
-            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="#1610b981" />
+            <Setter Property="BorderBrush" Value="#7310b981" />
         </Style>
         <Style Selector="ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#1c2d52" />
-            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Background" Value="#2010b981" />
+            <Setter Property="BorderBrush" Value="#9910b981" />
         </Style>
         <Style Selector="ListBoxItem:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="#162544" />
-            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
+            <Setter Property="Background" Value="#1610b981" />
+            <Setter Property="BorderBrush" Value="#7310b981" />
         </Style>
 
     </Application.Styles>

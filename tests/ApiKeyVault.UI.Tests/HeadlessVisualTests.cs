@@ -18,7 +18,8 @@ public class HeadlessVisualTests : IDisposable
     private readonly string _statePath;
     private readonly InMemoryDeviceKeyStore _deviceStore;
     private readonly LocalStateManager _stateManager;
-    private readonly string _artifactDir = @"C:\Users\DandreJansenvanVuure\.gemini\antigravity-ide\brain\d6397232-02cf-4e8c-9b33-e4e05a89fbab";
+    private readonly string _artifactDir =
+        Environment.GetEnvironmentVariable("AKV_SCREENSHOT_DIR") ?? Path.Combine(Path.GetTempPath(), "AkvScreenshots");
 
     private static readonly Argon2idParameters FastKdf = new()
     {
@@ -35,6 +36,30 @@ public class HeadlessVisualTests : IDisposable
         _statePath = Path.Combine(_tempDir, "state.json");
         _deviceStore = new InMemoryDeviceKeyStore();
         _stateManager = new LocalStateManager(_statePath);
+        Directory.CreateDirectory(_artifactDir);
+    }
+
+    [AvaloniaFact]
+    public void RenderFirstRunAndLockScreens()
+    {
+        var vm = new MainWindowViewModel(_deviceStore, _stateManager, defaultVaultPath: _vaultPath);
+        var window = new MainWindow { DataContext = vm, Width = 1080, Height = 760 };
+        window.Show();
+
+        vm.IsLocked = false;
+        vm.IsFirstRun = true;
+        vm.FirstRunDirectory = _tempDir;
+        vm.FirstRunPassphrase = "correct-horse-42";
+        var firstRunFrame = window.CaptureRenderedFrame();
+        Assert.NotNull(firstRunFrame);
+        firstRunFrame.Save(Path.Combine(_artifactDir, "0a_first_run.png"));
+
+        vm.IsFirstRun = false;
+        vm.IsLocked = true;
+        vm.UnlockErrorMessage = "Incorrect passphrase.";
+        var lockFrame = window.CaptureRenderedFrame();
+        Assert.NotNull(lockFrame);
+        lockFrame.Save(Path.Combine(_artifactDir, "0b_lock_screen.png"));
     }
 
     [AvaloniaFact]
@@ -109,6 +134,39 @@ public class HeadlessVisualTests : IDisposable
         var editKeyModalFrame = window.CaptureRenderedFrame();
         Assert.NotNull(editKeyModalFrame);
         editKeyModalFrame.Save(Path.Combine(_artifactDir, "5_edit_key_dialog_modal.png"));
+
+        // --- 6. ACTIVE TAG FILTER ---
+        vm.CancelKeyDialogCommand.Execute(null);
+        window.Width = 1080;
+        window.Height = 720;
+        vm.SetFilterCommand.Execute("tag:prod");
+        var filteredFrame = window.CaptureRenderedFrame();
+        Assert.NotNull(filteredFrame);
+        filteredFrame.Save(Path.Combine(_artifactDir, "6_tag_filter_active.png"));
+
+        // --- 7. SEARCH WITH NO MATCHES ---
+        vm.SearchText = "does-not-exist";
+        Assert.True(vm.HasNoMatchingEntries);
+        var noMatchFrame = window.CaptureRenderedFrame();
+        Assert.NotNull(noMatchFrame);
+        noMatchFrame.Save(Path.Combine(_artifactDir, "7_no_matches.png"));
+    }
+
+    [AvaloniaFact]
+    public void RenderEmptyVault()
+    {
+        VaultManager.CreateVault(_vaultPath, "P@ssw0rd", "TEST-MACHINE", FastKdf, _deviceStore, _stateManager).Session.Dispose();
+
+        var vm = new MainWindowViewModel(_deviceStore, _stateManager, defaultVaultPath: _vaultPath);
+        vm.UnlockPassphrase = "P@ssw0rd";
+        vm.UnlockCommand.Execute(null);
+        Assert.True(vm.HasNoKeys);
+
+        var window = new MainWindow { DataContext = vm, Width = 1080, Height = 720 };
+        window.Show();
+        var frame = window.CaptureRenderedFrame();
+        Assert.NotNull(frame);
+        frame.Save(Path.Combine(_artifactDir, "8_empty_vault.png"));
     }
 
     public void Dispose()

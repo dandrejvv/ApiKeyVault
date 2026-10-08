@@ -51,6 +51,18 @@ public sealed partial class EntryItemViewModel : ObservableObject
         _ => "#86948a"
     };
 
+    /// <summary>Translucent version of <see cref="StatusColor"/> for status pills.</summary>
+    public string StatusBackground => "#1F" + StatusColor.TrimStart('#');
+
+    public string StatusBorder => "#40" + StatusColor.TrimStart('#');
+
+    public string ExpiryColor => Status switch
+    {
+        KeyStatus.Due => "#f59e0b",
+        KeyStatus.Expired => "#f87171",
+        _ => "#94a3b8"
+    };
+
     public string ExpiryDescription
     {
         get
@@ -260,25 +272,14 @@ public sealed partial class EntryItemViewModel : ObservableObject
     public string EnvironmentTag => PrimaryTag;
     public string EnvironmentTagColor => PrimaryTagColor;
 
-    public string ProviderDisplayName
-    {
-        get
-        {
-            if (string.IsNullOrEmpty(Provider)) return "Other";
-            return Provider switch
-            {
-                "openai" => "OpenAI",
-                "anthropic" => "Anthropic",
-                "openrouter" => "OpenRouter",
-                "azure" => "Azure",
-                "gemini" => "Gemini",
-                "stripe" => "Stripe",
-                "aws" => "AWS",
-                "github" => "GitHub",
-                _ => char.ToUpper(Provider[0]) + Provider.Substring(1)
-            };
-        }
-    }
+    public string ProviderDisplayName => ProviderVisuals.GetDisplayName(Provider);
+
+    public string ProviderInitial => ProviderVisuals.GetInitial(Provider);
+    public string ProviderColor => ProviderVisuals.GetColors(Provider).fg;
+    public string ProviderTint => ProviderVisuals.GetColors(Provider).bg;
+    public string ProviderBorder => ProviderVisuals.GetColors(Provider).border;
+
+    public string Subtitle => HasComment ? Comment! : ProviderDisplayName;
 
     public EntryItemViewModel(VaultEntry entry)
     {

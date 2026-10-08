@@ -1,83 +1,169 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ApiKeyVault.UI.ViewModels"
+        xmlns:c="using:ApiKeyVault.UI.Controls"
         x:Class="ApiKeyVault.UI.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="ApiKeyVault"
-        Width="1080" Height="700"
-        MinWidth="880" MinHeight="550"
+        Icon="/Assets/app.ico"
+        Width="1100" Height="720"
+        MinWidth="880" MinHeight="560"
         Background="{StaticResource SurfaceLowestBrush}"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
+        <!-- Faint dot grid used behind the welcome / unlock cards -->
+        <DrawingBrush x:Key="DotGridBrush" TileMode="Tile" Stretch="None"
+                      SourceRect="0,0,22,22" DestinationRect="0,0,22,22">
+            <DrawingBrush.Drawing>
+                <GeometryDrawing Brush="#1cffffff">
+                    <GeometryDrawing.Geometry>
+                        <EllipseGeometry Rect="0,0,1.6,1.6" />
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingBrush.Drawing>
+        </DrawingBrush>
+    </Window.Resources>
+
+    <Window.Styles>
+        <!-- Responsive key table: ListPane gets .compact / .narrow from code-behind -->
+        <Style Selector=":is(Control).statusCol">
+            <Setter Property="Width" Value="100" />
+        </Style>
+        <Style Selector=":is(Control).tagsCol">
+            <Setter Property="Width" Value="96" />
+        </Style>
+        <Style Selector="Border#ListPane.compact :is(Control).tagsCol">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Border#ListPane.narrow :is(Control).statusCol">
+            <Setter Property="Width" Value="30" />
+        </Style>
+        <Style Selector="Border#ListPane.narrow TextBlock.statusLabel">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Border#ListPane.narrow TextBlock.statusHeader">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="Border#ListPane.narrow Border.statusPill">
+            <Setter Property="Padding" Value="5" />
+        </Style>
+    </Window.Styles>
+
     <Grid>
         <!-- ======================================================== -->
-        <!-- 1. FIRST RUN WIZARD (Obsidian Vault v2)                  -->
+        <!-- 0. HERO BACKDROP (shared by first-run + lock screens)    -->
         <!-- ======================================================== -->
-        <Border IsVisible="{Binding IsFirstRun}" Background="{StaticResource SurfaceLowestBrush}" Padding="24" AutomationProperties.AutomationId="FirstRun.View">
+        <Panel IsVisible="{Binding !IsUnlocked}" IsHitTestVisible="False">
+            <Border Background="{StaticResource DotGridBrush}">
+                <Border.OpacityMask>
+                    <RadialGradientBrush Center="50%,40%" GradientOrigin="50%,40%" RadiusX="60%" RadiusY="70%">
+                        <GradientStop Offset="0" Color="#ffffffff" />
+                        <GradientStop Offset="1" Color="#00ffffff" />
+                    </RadialGradientBrush>
+                </Border.OpacityMask>
+            </Border>
+            <Border>
+                <Border.Background>
+                    <RadialGradientBrush Center="50%,0%" GradientOrigin="50%,0%" RadiusX="55%" RadiusY="60%">
+                        <GradientStop Offset="0" Color="#3310b981" />
+                        <GradientStop Offset="0.6" Color="#0a10b981" />
+                        <GradientStop Offset="1" Color="#0010b981" />
+                    </RadialGradientBrush>
+                </Border.Background>
+            </Border>
+        </Panel>
+
+        <!-- ======================================================== -->
+        <!-- 1. FIRST RUN WIZARD                                      -->
+        <!-- ======================================================== -->
+        <Border IsVisible="{Binding IsFirstRun}" Padding="24" AutomationProperties.AutomationId="FirstRun.View">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <Border Width="520" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="14" Padding="32" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <StackPanel Spacing="16">
-                        <!-- Header Icon & Branding -->
-                        <StackPanel Spacing="8" HorizontalAlignment="Center">
-                            <Border Width="48" Height="48" CornerRadius="24" Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" HorizontalAlignment="Center">
-                                <TextBlock Text="🔒" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <Border Classes="card elevated" Width="540" Padding="36,32" Margin="0,8" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel Spacing="18">
+                        <!-- Branding -->
+                        <StackPanel Spacing="10" HorizontalAlignment="Center">
+                            <Border CornerRadius="16" BoxShadow="0 10 40 0 #6610b981" HorizontalAlignment="Center">
+                                <c:LogoMark Width="56" Height="56" />
                             </Border>
-                            <TextBlock Text="Welcome to ApiKeyVault" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" />
-                            <TextBlock Text="Create your secure encrypted vault to store API keys across all your devices."
-                                       TextWrapping="Wrap" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="440" FontSize="13" />
+                            <TextBlock Text="Create your vault" FontSize="22" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                            <TextBlock Text="One encrypted file for every API key, synced across all your devices."
+                                       TextWrapping="Wrap" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" MaxWidth="400" FontSize="13" />
                         </StackPanel>
 
                         <!-- Vault Folder Selection -->
                         <StackPanel Spacing="6">
-                            <TextBlock Text="VAULT STORAGE FOLDER" FontFamily="Consolas, monospace" FontSize="11" FontWeight="Medium" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                            <TextBlock Classes="label" Text="VAULT STORAGE FOLDER" />
                             <Grid ColumnDefinitions="*, Auto">
-                                <TextBox Grid.Column="0" Text="{Binding FirstRunDirectory}" AutomationProperties.AutomationId="FirstRun.Directory" Height="38" />
-                                <Button Grid.Column="1" Content="📁 Browse..." Command="{Binding BrowseFirstRunFolderCommand}" Classes="secondary" Margin="8,0,0,0" Height="38" />
+                                <TextBox Grid.Column="0" Text="{Binding FirstRunDirectory}" AutomationProperties.AutomationId="FirstRun.Directory" Height="38">
+                                    <TextBox.InnerLeftContent>
+                                        <c:Icon Data="{StaticResource Icon.Folder}" Width="15" Height="15" Margin="11,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                    </TextBox.InnerLeftContent>
+                                </TextBox>
+                                <Button Grid.Column="1" Content="Browse…" Command="{Binding BrowseFirstRunFolderCommand}" Classes="secondary" Margin="8,0,0,0" Height="38" Padding="14,0" />
                             </Grid>
+                            <TextBlock Classes="helper" Text="Tip: a OneDrive, Dropbox or Git folder keeps the vault in sync between machines." />
                         </StackPanel>
 
                         <!-- Vault File Name -->
                         <StackPanel Spacing="6">
-                            <TextBlock Text="VAULT FILENAME" FontFamily="Consolas, monospace" FontSize="11" FontWeight="Medium" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                            <TextBlock Classes="label" Text="VAULT FILENAME" />
                             <TextBox Text="{Binding FirstRunFileName}" AutomationProperties.AutomationId="FirstRun.FileName" Height="38" />
                         </StackPanel>
 
-                        <!-- Target Path Telemetry Preview Chip with Copy -->
-                        <Border Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8">
-                            <Grid ColumnDefinitions="*, Auto">
-                                <TextBlock Grid.Column="0" Text="{Binding FirstRunVaultPath, StringFormat='Target: {0}'}" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
-                                <Button Grid.Column="1" Content="Copy" Command="{Binding CopyTargetVaultPathCommand}" Classes="subtle" FontSize="11" Foreground="{StaticResource SecondaryBrush}" Margin="8,0,0,0" Padding="6,2" />
+                        <!-- Target path preview -->
+                        <Border Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" CornerRadius="9" Padding="12,8">
+                            <Grid ColumnDefinitions="Auto, *, Auto">
+                                <c:Icon Grid.Column="0" Data="{StaticResource Icon.Database}" Width="14" Height="14" Foreground="{StaticResource SecondaryBrush}" VerticalAlignment="Top" Margin="0,1,10,0" />
+                                <TextBlock Grid.Column="1" Text="{Binding FirstRunVaultPath}" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                <Button Grid.Column="2" Command="{Binding CopyTargetVaultPathCommand}" Classes="subtle" Foreground="{StaticResource SecondaryBrush}" Margin="8,0,0,0" Padding="6,4" VerticalAlignment="Center" ToolTip.Tip="Copy path">
+                                    <c:Icon Data="{StaticResource Icon.Copy}" Width="13" Height="13" />
+                                </Button>
                             </Grid>
                         </Border>
 
                         <!-- Master Passphrase & Strength Meter -->
                         <StackPanel Spacing="6">
-                            <TextBlock Text="MASTER PASSPHRASE" FontFamily="Consolas, monospace" FontSize="11" FontWeight="Medium" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                            <TextBlock Classes="label" Text="MASTER PASSPHRASE" />
                             <TextBox PasswordChar="•" Text="{Binding FirstRunPassphrase}" AutomationProperties.AutomationId="FirstRun.Passphrase" Height="38">
+                                <TextBox.InnerLeftContent>
+                                    <c:Icon Data="{StaticResource Icon.Key}" Width="15" Height="15" Margin="11,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                </TextBox.InnerLeftContent>
                                 <TextBox.KeyBindings>
                                     <KeyBinding Gesture="Enter" Command="{Binding CreateVaultCommand}" />
                                 </TextBox.KeyBindings>
                             </TextBox>
 
                             <!-- 4-Segment Strength Bar -->
-                            <Grid ColumnDefinitions="*, *, *, *" Margin="0,4,0,2">
-                                <Border Grid.Column="0" Height="4" CornerRadius="2" Margin="0,0,2,0"
-                                        Background="{Binding IsStrengthBar1Active, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <Border Grid.Column="1" Height="4" CornerRadius="2" Margin="2,0,2,0"
-                                        Background="{Binding IsStrengthBar2Active, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <Border Grid.Column="2" Height="4" CornerRadius="2" Margin="2,0,2,0"
-                                        Background="{Binding IsStrengthBar3Active, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                                <Border Grid.Column="3" Height="4" CornerRadius="2" Margin="2,0,0,0"
-                                        Background="{Binding IsStrengthBar4Active, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                            <Grid ColumnDefinitions="*, *, *, *" Margin="0,4,0,0">
+                                <Panel Grid.Column="0" Margin="0,0,2,0">
+                                    <Border Height="4" CornerRadius="2" Background="{StaticResource SurfaceContainerHighestBrush}" />
+                                    <Border Height="4" CornerRadius="2" Background="{Binding PassphraseStrengthColor}" IsVisible="{Binding IsStrengthBar1Active}" />
+                                </Panel>
+                                <Panel Grid.Column="1" Margin="2,0,2,0">
+                                    <Border Height="4" CornerRadius="2" Background="{StaticResource SurfaceContainerHighestBrush}" />
+                                    <Border Height="4" CornerRadius="2" Background="{Binding PassphraseStrengthColor}" IsVisible="{Binding IsStrengthBar2Active}" />
+                                </Panel>
+                                <Panel Grid.Column="2" Margin="2,0,2,0">
+                                    <Border Height="4" CornerRadius="2" Background="{StaticResource SurfaceContainerHighestBrush}" />
+                                    <Border Height="4" CornerRadius="2" Background="{Binding PassphraseStrengthColor}" IsVisible="{Binding IsStrengthBar3Active}" />
+                                </Panel>
+                                <Panel Grid.Column="3" Margin="2,0,0,0">
+                                    <Border Height="4" CornerRadius="2" Background="{StaticResource SurfaceContainerHighestBrush}" />
+                                    <Border Height="4" CornerRadius="2" Background="{Binding PassphraseStrengthColor}" IsVisible="{Binding IsStrengthBar4Active}" />
+                                </Panel>
                             </Grid>
 
-                            <TextBlock Text="{Binding PassphraseStrengthText}" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource SecondaryBrush}" />
+                            <TextBlock Text="{Binding PassphraseStrengthText}" FontSize="11" FontWeight="Medium" Foreground="{Binding PassphraseStrengthColor}" />
                         </StackPanel>
 
                         <!-- Confirm Passphrase -->
                         <StackPanel Spacing="6">
-                            <TextBlock Text="CONFIRM PASSPHRASE" FontFamily="Consolas, monospace" FontSize="11" FontWeight="Medium" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                            <TextBlock Classes="label" Text="CONFIRM PASSPHRASE" />
                             <TextBox PasswordChar="•" Text="{Binding FirstRunConfirmPassphrase}" AutomationProperties.AutomationId="FirstRun.ConfirmPassphrase" Height="38">
+                                <TextBox.InnerLeftContent>
+                                    <c:Icon Data="{StaticResource Icon.Key}" Width="15" Height="15" Margin="11,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                </TextBox.InnerLeftContent>
                                 <TextBox.KeyBindings>
                                     <KeyBinding Gesture="Enter" Command="{Binding CreateVaultCommand}" />
                                 </TextBox.KeyBindings>
@@ -85,18 +171,56 @@
                         </StackPanel>
 
                         <!-- Error Message -->
-                        <TextBlock Text="{Binding FirstRunErrorMessage}" Foreground="{StaticResource StatusDangerBrush}" IsVisible="{Binding FirstRunErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <Border Classes="banner danger" IsVisible="{Binding FirstRunErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <Grid ColumnDefinitions="Auto, *">
+                                <c:Icon Data="{StaticResource Icon.Alert}" Width="15" Height="15" Foreground="{StaticResource StatusDangerBrush}" Margin="0,0,10,0" />
+                                <TextBlock Grid.Column="1" Text="{Binding FirstRunErrorMessage}" Foreground="#fda4af" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
 
-                        <!-- Primary Action Button -->
-                        <Button Content="Create Encrypted Vault" Command="{Binding CreateVaultCommand}"
-                                Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        <!-- Primary Action -->
+                        <Button Command="{Binding CreateVaultCommand}"
+                                Classes="primary" HorizontalAlignment="Stretch"
                                 IsDefault="True"
-                                AutomationProperties.AutomationId="FirstRun.CreateButton" Height="42" Margin="0,8,0,0" />
+                                AutomationProperties.AutomationId="FirstRun.CreateButton" Height="44" Margin="0,4,0,0">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <c:Icon Data="{StaticResource Icon.ShieldCheck}" Width="16" Height="16" />
+                                <TextBlock Text="Create Encrypted Vault" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Crypto feature strip -->
+                        <Grid ColumnDefinitions="*, *, *" Margin="0,2,0,0">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                <c:Icon Data="{StaticResource Icon.Lock}" Width="12" Height="12" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="XChaCha20-Poly1305" FontSize="10.5" Foreground="{StaticResource OnSurfaceDimBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                <c:Icon Data="{StaticResource Icon.Cpu}" Width="12" Height="12" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Argon2id key derivation" FontSize="10.5" Foreground="{StaticResource OnSurfaceDimBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                <c:Icon Data="{StaticResource Icon.Monitor}" Width="12" Height="12" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Device-bound unlock" FontSize="10.5" Foreground="{StaticResource OnSurfaceDimBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Separator Margin="0,2" />
 
                         <!-- Footer Links -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16" Margin="0,4,0,0">
-                            <Button Content="📂 Choose Existing Vault..." Command="{Binding ChooseExistingVaultOnFirstRunCommand}" Classes="subtle" FontSize="12" />
-                            <Button Content="Go to Unlock Screen" Command="{Binding SwitchToLockScreenCommand}" Classes="subtle" FontSize="12" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                            <Button Command="{Binding ChooseExistingVaultOnFirstRunCommand}" Classes="subtle">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <c:Icon Data="{StaticResource Icon.Folder}" Width="14" Height="14" />
+                                    <TextBlock Text="Open existing vault…" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding SwitchToLockScreenCommand}" Classes="subtle">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <c:Icon Data="{StaticResource Icon.Unlock}" Width="14" Height="14" />
+                                    <TextBlock Text="Go to unlock screen" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -104,184 +228,219 @@
         </Border>
 
         <!-- ======================================================== -->
-        <!-- 2. LOCK SCREEN (Obsidian Vault v2)                       -->
+        <!-- 2. LOCK SCREEN                                           -->
         <!-- ======================================================== -->
-        <Border IsVisible="{Binding IsLocked}" Background="{StaticResource SurfaceLowestBrush}" Padding="24" AutomationProperties.AutomationId="Unlock.View">
+        <Border IsVisible="{Binding IsLocked}" Padding="24" AutomationProperties.AutomationId="Unlock.View">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <Border Width="480" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="14" Padding="32" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border Classes="card elevated" Width="460" Padding="32" Margin="0,8" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <StackPanel Spacing="16">
-                        <!-- Header Icon & Branding -->
-                        <StackPanel Spacing="8" HorizontalAlignment="Center">
-                            <Border Width="48" Height="48" CornerRadius="24" Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" HorizontalAlignment="Center">
-                                <TextBlock Text="🔒" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <!-- Branding -->
+                        <StackPanel Spacing="10" HorizontalAlignment="Center">
+                            <Border CornerRadius="16" BoxShadow="0 10 40 0 #6610b981" HorizontalAlignment="Center">
+                                <c:LogoMark Width="56" Height="56" />
                             </Border>
-                            <TextBlock Text="ApiKeyVault" FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" />
-                            <TextBlock Text="Enter master passphrase to unlock vault" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" FontSize="13" />
+                            <TextBlock Text="Welcome back" FontSize="22" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                            <TextBlock Text="Enter your master passphrase to unlock the vault." Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" FontSize="13" />
                         </StackPanel>
 
                         <!-- Targeted Vault Card -->
-                        <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12">
-                            <Grid ColumnDefinitions="*, Auto">
-                                <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Text="{Binding TargetVaultFileName}" FontWeight="SemiBold" FontSize="14" Foreground="{StaticResource OnSurfaceBrush}" />
-                                    <TextBlock Text="{Binding TargetVaultDirectory}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                        <Border Classes="well" Padding="12,10">
+                            <Grid ColumnDefinitions="Auto, *, Auto">
+                                <Border Grid.Column="0" Classes="iconTile" Width="36" Height="36" Margin="0,0,12,0">
+                                    <c:Icon Data="{StaticResource Icon.Database}" Width="17" Height="17" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding TargetVaultFileName}" FontWeight="SemiBold" FontSize="13.5" Foreground="{StaticResource OnSurfaceBrush}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding TargetVaultDirectory}" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding TargetVaultDirectory}" />
                                 </StackPanel>
-                                <Button Grid.Column="1" Content="📂 Change..." Command="{Binding BrowseOtherVaultCommand}" Classes="secondary" Height="32" Margin="8,0,0,0" />
+                                <Button Grid.Column="2" Content="Change" Command="{Binding BrowseOtherVaultCommand}" Classes="secondary" Height="30" Margin="8,0,0,0" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <!-- Passphrase Field -->
                         <TextBox PasswordChar="•" Text="{Binding UnlockPassphrase}"
                                  AutomationProperties.AutomationId="Unlock.Passphrase"
-                                 Watermark="Master Passphrase" Height="38">
+                                 Watermark="Master passphrase" Height="42">
+                            <TextBox.InnerLeftContent>
+                                <c:Icon Data="{StaticResource Icon.Lock}" Width="15" Height="15" Margin="12,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                            </TextBox.InnerLeftContent>
                             <TextBox.KeyBindings>
                                 <KeyBinding Gesture="Enter" Command="{Binding UnlockCommand}" />
                             </TextBox.KeyBindings>
                         </TextBox>
 
                         <!-- Error Message -->
-                        <TextBlock Text="{Binding UnlockErrorMessage}" Foreground="{StaticResource StatusDangerBrush}"
-                                   IsVisible="{Binding UnlockErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <Border Classes="banner danger" IsVisible="{Binding UnlockErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <Grid ColumnDefinitions="Auto, *">
+                                <c:Icon Data="{StaticResource Icon.Alert}" Width="15" Height="15" Foreground="{StaticResource StatusDangerBrush}" Margin="0,0,10,0" />
+                                <TextBlock Grid.Column="1" Text="{Binding UnlockErrorMessage}" Foreground="#fda4af" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
 
-                        <!-- Unlock Button (Primary Emerald) -->
-                        <Button Content="Unlock Vault" Command="{Binding UnlockCommand}"
-                                Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        <!-- Unlock Button -->
+                        <Button Command="{Binding UnlockCommand}"
+                                Classes="primary" HorizontalAlignment="Stretch"
                                 IsDefault="True"
-                                AutomationProperties.AutomationId="Unlock.Button" Height="40" />
+                                AutomationProperties.AutomationId="Unlock.Button" Height="42">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <c:Icon Data="{StaticResource Icon.Unlock}" Width="16" Height="16" />
+                                <TextBlock Text="Unlock Vault" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
 
                         <!-- Recent Vaults Section -->
-                        <Border BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Padding="0,14,0,0" Margin="0,8,0,0">
-                            <StackPanel Spacing="8">
-                                <TextBlock Text="RECENT VAULTS" FontFamily="Consolas, monospace" FontSize="11" FontWeight="Medium" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                
-                                <ItemsControl ItemsSource="{Binding RecentVaults}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate DataType="vm:RecentVaultItemViewModel">
-                                            <Border Margin="0,3" Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="6,4">
-                                                <Grid ColumnDefinitions="*, Auto, Auto">
-                                                    <Button Grid.Column="0" Classes="subtle"
-                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectRecentVaultCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left">
-                                                        <StackPanel Spacing="1">
-                                                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource OnSurfaceBrush}" />
-                                                            <TextBlock Text="{Binding DirectoryPath}" FontSize="10" Foreground="{StaticResource OnSurfaceMutedBrush}" TextTrimming="CharacterEllipsis" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                    
-                                                    <Border Grid.Column="1" IsVisible="{Binding IsActive}" Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="4,0">
-                                                        <TextBlock Text="SELECTED" FontSize="9" FontWeight="Bold" Foreground="{StaticResource SecondaryBrush}" />
-                                                    </Border>
-
-                                                    <Button Grid.Column="2" Content="✕" Classes="subtle"
-                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRecentVaultCommand}"
-                                                            CommandParameter="{Binding}"
-                                                            Foreground="{StaticResource OnSurfaceMutedBrush}" Padding="6,2" VerticalAlignment="Center" />
+                        <StackPanel Spacing="8" Margin="0,6,0,0" IsVisible="{Binding RecentVaults.Count}">
+                            <TextBlock Classes="label" Text="RECENT VAULTS" />
+                            <ItemsControl ItemsSource="{Binding RecentVaults}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:RecentVaultItemViewModel">
+                                        <Grid ColumnDefinitions="*, Auto, Auto" Margin="0,2">
+                                            <Button Grid.Column="0" Classes="subtle" Padding="8,6"
+                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SelectRecentVaultCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                                                <Grid ColumnDefinitions="Auto, *">
+                                                    <c:Icon Data="{StaticResource Icon.Folder}" Width="14" Height="14" Margin="0,0,10,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                                    <StackPanel Grid.Column="1" Spacing="1">
+                                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource OnSurfaceBrush}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding DirectoryPath}" FontSize="10.5" Foreground="{StaticResource OnSurfaceDimBrush}" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
                                                 </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                            </Button>
 
-                                <!-- Lock Screen Bottom Links -->
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16" Margin="0,6,0,0">
-                                    <Button Content="➕ Create New Vault" Command="{Binding CreateNewVaultFromLockScreenCommand}" Classes="subtle" FontSize="12" />
-                                    <Button Content="📂 Open Other File..." Command="{Binding BrowseOtherVaultCommand}" Classes="subtle" FontSize="12" />
+                                            <Border Grid.Column="1" IsVisible="{Binding IsActive}" Background="{StaticResource PrimarySurfaceBrush}" CornerRadius="999" Padding="8,2" VerticalAlignment="Center" Margin="6,0">
+                                                <TextBlock Text="Current" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource SecondaryBrush}" />
+                                            </Border>
+
+                                            <Button Grid.Column="2" Classes="subtle" Padding="6" VerticalAlignment="Center" ToolTip.Tip="Remove from recent list"
+                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveRecentVaultCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <c:Icon Data="{StaticResource Icon.X}" Width="12" Height="12" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <Separator Margin="0,2" />
+
+                        <!-- Lock Screen Bottom Links -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+                            <Button Command="{Binding CreateNewVaultFromLockScreenCommand}" Classes="subtle">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <c:Icon Data="{StaticResource Icon.Plus}" Width="14" Height="14" />
+                                    <TextBlock Text="Create new vault" VerticalAlignment="Center" />
                                 </StackPanel>
-                            </StackPanel>
-                        </Border>
+                            </Button>
+                            <Button Command="{Binding BrowseOtherVaultCommand}" Classes="subtle">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <c:Icon Data="{StaticResource Icon.Folder}" Width="14" Height="14" />
+                                    <TextBlock Text="Open other file…" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </ScrollViewer>
         </Border>
 
         <!-- ======================================================== -->
-        <!-- 3. UNLOCKED MAIN WORKSPACE (Obsidian Vault v2)           -->
+        <!-- 3. UNLOCKED MAIN WORKSPACE                               -->
         <!-- ======================================================== -->
         <Grid IsVisible="{Binding IsUnlocked}" RowDefinitions="*, Auto">
-            <!-- 3-Column Layout: Sidebar (Full Height) | Key List Table | Collapsible Inspector Panel -->
-            <Grid Grid.Row="0" ColumnDefinitions="190, *, Auto">
+            <!-- Sidebar | Key List | Collapsible Inspector -->
+            <Grid Grid.Row="0" ColumnDefinitions="208, *, Auto">
                 <!-- ==================== COLUMN 0: SIDEBAR ==================== -->
-                <Border Grid.Column="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Padding="14,16">
+                <Border Grid.Column="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Padding="12,16,12,12">
                     <Grid RowDefinitions="Auto, Auto, Auto, *, Auto">
-                        <!-- 1. Logo & App Branding -->
-                        <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,14">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <Border Width="30" Height="30" CornerRadius="8" Background="{StaticResource PrimaryBrush}" VerticalAlignment="Center">
-                                    <TextBlock Text="🛡" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#020617" />
-                                </Border>
-                                <TextBlock Text="ApiKeyVault" FontSize="17" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" />
+                        <!-- 1. Logo & Vault -->
+                        <StackPanel Grid.Row="0" Spacing="14" Margin="0,0,0,14">
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="4,0,0,0">
+                                <c:LogoMark Width="30" Height="30" />
+                                <TextBlock Text="ApiKeyVault" FontSize="16" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" />
                             </StackPanel>
 
-                            <!-- User / Machine Profile Pill -->
-                            <Border Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,8,0,0">
+                            <Border Classes="well" Padding="10,8" Background="{StaticResource SurfaceContainerBrush}">
                                 <Grid ColumnDefinitions="Auto, *">
-                                    <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{StaticResource SurfaceContainerHighestBrush}" VerticalAlignment="Center" Margin="0,0,8,0">
-                                        <TextBlock Text="👤" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Border Grid.Column="0" Classes="iconTile" Width="30" Height="30" CornerRadius="8" Margin="0,0,10,0">
+                                        <c:Icon Data="{StaticResource Icon.Database}" Width="15" Height="15" />
                                     </Border>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding ActiveVaultFileName}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" TextTrimming="CharacterEllipsis" />
-                                        <StackPanel Orientation="Horizontal" Spacing="5">
-                                            <TextBlock Text="●" FontSize="7" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
-                                            <TextBlock Text="vault unlocked" FontSize="10" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                                        <TextBlock Text="{Binding ActiveVaultFileName}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding ActiveVaultPath}" />
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Ellipse Width="6" Height="6" Fill="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Text="Unlocked" FontSize="10.5" Foreground="{StaticResource SecondaryBrush}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </StackPanel>
                                 </Grid>
                             </Border>
                         </StackPanel>
 
-                        <!-- 2. Search Box in Sidebar -->
-                        <TextBox Grid.Row="1" Text="{Binding SearchText}"
-                                 Watermark="🔍 Search keys..."
-                                 Height="36" Margin="0,0,0,14"
-                                 AutomationProperties.AutomationId="Search.Box" />
+                        <!-- 2. Search -->
+                        <TextBox Grid.Row="1" x:Name="SearchBox" Text="{Binding SearchText}"
+                                 Watermark="Search keys"
+                                 Height="36" Margin="0,0,0,10" Padding="8,8"
+                                 AutomationProperties.AutomationId="Search.Box">
+                            <TextBox.InnerLeftContent>
+                                <c:Icon Data="{StaticResource Icon.Search}" Width="14" Height="14" Margin="11,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                            </TextBox.InnerLeftContent>
+                            <TextBox.InnerRightContent>
+                                <Border Classes="kbd" Margin="0,0,8,0">
+                                    <TextBlock Text="Ctrl K" />
+                                </Border>
+                            </TextBox.InnerRightContent>
+                        </TextBox>
 
-                        <!-- 3. Primary CTA: Add Key -->
-                        <Button Grid.Row="2" Content="+ Add API Key" Command="{Binding OpenAddKeyDialogCommand}"
-                                Classes="primary" HorizontalAlignment="Stretch" Height="36" Margin="0,0,0,14"
-                                AutomationProperties.AutomationId="Nav.AddKey" />
+                        <!-- 3. Primary CTA -->
+                        <Button Grid.Row="2" Command="{Binding OpenAddKeyDialogCommand}"
+                                Classes="primary" HorizontalAlignment="Stretch" Height="36" Margin="0,0,0,16"
+                                AutomationProperties.AutomationId="Nav.AddKey">
+                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                <c:Icon Data="{StaticResource Icon.Plus}" Width="15" Height="15" StrokeThickness="2.4" />
+                                <TextBlock Text="Add API Key" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
 
-                        <!-- 4. Navigation Categories & Providers List -->
-                        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
-                            <StackPanel Spacing="3">
-                                <Button HorizontalAlignment="Stretch" Classes="subtle"
+                        <!-- 4. Navigation -->
+                        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Margin="-4,0">
+                            <StackPanel Spacing="2" Margin="4,0">
+                                <Button Classes="nav" Classes.active="{Binding IsAllFilterActive}"
                                         Command="{Binding SetFilterCommand}" CommandParameter="all"
                                         AutomationProperties.AutomationId="Nav.AllKeys">
                                     <Grid ColumnDefinitions="Auto, *, Auto">
-                                        <TextBlock Grid.Column="0" Text="🌐" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                        <c:Icon Data="{StaticResource Icon.Layers}" Width="15" Height="15" Margin="0,0,10,0" />
                                         <TextBlock Grid.Column="1" Text="All Keys" VerticalAlignment="Center" />
-                                        <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
-                                            <TextBlock Text="{Binding TotalKeysCount}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        <Border Grid.Column="2" Classes="count">
+                                            <TextBlock Text="{Binding TotalKeysCount}" />
                                         </Border>
                                     </Grid>
                                 </Button>
 
-                                <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                <Button Classes="nav" Classes.active="{Binding IsAttentionFilterActive}"
                                         Command="{Binding SetFilterCommand}" CommandParameter="attention"
                                         AutomationProperties.AutomationId="Nav.Attention">
                                     <Grid ColumnDefinitions="Auto, *, Auto">
-                                        <TextBlock Grid.Column="0" Text="⚠️" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" Text="Attention" Foreground="{StaticResource StatusWarningBrush}" VerticalAlignment="Center" />
-                                        <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
-                                            <TextBlock Text="{Binding AttentionCount}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource StatusWarningBrush}" />
+                                        <c:Icon Data="{StaticResource Icon.Alert}" Width="15" Height="15" Margin="0,0,10,0" Foreground="{StaticResource StatusWarningBrush}" />
+                                        <TextBlock Grid.Column="1" Text="Needs Attention" VerticalAlignment="Center" />
+                                        <Border Grid.Column="2" Classes="count" Classes.warn="{Binding AttentionCount}">
+                                            <TextBlock Text="{Binding AttentionCount}" />
                                         </Border>
                                     </Grid>
                                 </Button>
 
-                                <Separator Margin="0,10" Background="{StaticResource BorderSubtleBrush}" />
-                                <TextBlock Text="TAGS" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="10" FontWeight="Bold" Margin="8,2" />
-
+                                <TextBlock Classes="section" Text="TAGS" Margin="10,16,0,6" IsVisible="{Binding TagFilters.Count}" />
                                 <ItemsControl ItemsSource="{Binding TagFilters}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="vm:TagFilterItemViewModel">
-                                            <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                            <Button Classes="nav" Classes.active="{Binding IsActive}" Margin="0,1"
                                                     Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetFilterCommand}"
                                                     CommandParameter="{Binding Tag, StringFormat='tag:{0}'}">
                                                 <Grid ColumnDefinitions="Auto, *, Auto">
-                                                    <TextBlock Grid.Column="0" Text="#" FontSize="11" FontWeight="Bold" Foreground="{Binding Color}" Margin="2,0,8,0" VerticalAlignment="Center" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding Tag}" VerticalAlignment="Center" />
-                                                    <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
-                                                        <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                                    <c:Icon Data="{StaticResource Icon.Hash}" Width="14" Height="14" Foreground="{Binding Color}" Margin="0,0,10,0" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Tag}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                    <Border Grid.Column="2" Classes="count">
+                                                        <TextBlock Text="{Binding Count}" />
                                                     </Border>
                                                 </Grid>
                                             </Button>
@@ -289,20 +448,20 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <Separator Margin="0,10" Background="{StaticResource BorderSubtleBrush}" />
-                                <TextBlock Text="PLATFORMS" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="10" FontWeight="Bold" Margin="8,2" />
-
+                                <TextBlock Classes="section" Text="PLATFORMS" Margin="10,16,0,6" IsVisible="{Binding ProviderFilters.Count}" />
                                 <ItemsControl ItemsSource="{Binding ProviderFilters}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate DataType="vm:ProviderFilterItemViewModel">
-                                            <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                            <Button Classes="nav" Classes.active="{Binding IsActive}" Margin="0,1"
                                                     Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetFilterCommand}"
                                                     CommandParameter="{Binding Name}">
                                                 <Grid ColumnDefinitions="Auto, *, Auto">
-                                                    <TextBlock Grid.Column="0" Text="●" FontSize="8" Foreground="{StaticResource PrimaryBrush}" Margin="2,0,8,0" VerticalAlignment="Center" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" />
-                                                    <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
-                                                        <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                                    <Border Width="16" Height="16" CornerRadius="4" Background="{Binding Tint}" Margin="0,0,9,0" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Initial}" FontSize="9" FontWeight="Bold" Foreground="{Binding Color}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                    <Border Grid.Column="2" Classes="count">
+                                                        <TextBlock Text="{Binding Count}" />
                                                     </Border>
                                                 </Grid>
                                             </Button>
@@ -313,78 +472,92 @@
                         </ScrollViewer>
 
                         <!-- 5. Bottom Utilities -->
-                        <StackPanel Grid.Row="4" Spacing="4" Margin="0,10,0,0">
-                            <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                    Command="{Binding SwitchVaultCommand}"
-                                    AutomationProperties.AutomationId="Nav.SwitchVault">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="📂" FontSize="12" VerticalAlignment="Center" />
-                                    <TextBlock Text="Switch Vault" FontSize="12" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-
-                            <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                    Command="{Binding LockCommand}"
-                                    AutomationProperties.AutomationId="Nav.Lock">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock Text="🔒" FontSize="12" VerticalAlignment="Center" />
-                                    <TextBlock Text="Lock Vault" FontSize="12" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-
-                <!-- ==================== COLUMN 1: CENTER KEY TABLE ==================== -->
-                <Border Grid.Column="1" Background="{StaticResource SurfaceBaseBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0">
-                    <Grid RowDefinitions="Auto, *">
-                        <!-- Table Column Headers -->
-                        <Border Grid.Row="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="12,8">
+                        <Border Grid.Row="4" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
                             <Grid ColumnDefinitions="*, Auto">
-                                <Grid Grid.Column="0" ColumnDefinitions="*, 72, 68, 70, 52">
-                                    <TextBlock Grid.Column="0" Text="Key Name" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Text="Platform" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="2" Text="Status" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="3" Text="Tags" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="4" Text="Expires" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                </Grid>
-                                <!-- Toggle Details Panel Button -->
-                                <Button Grid.Column="1" Command="{Binding ToggleInspectorCommand}"
-                                        Classes="subtle" Padding="6,3" Margin="6,0,0,0"
-                                        ToolTip.Tip="Toggle details panel">
-                                    <TextBlock Text="◧" FontSize="12" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                <Button Grid.Column="0" Classes="nav"
+                                        Command="{Binding SwitchVaultCommand}"
+                                        AutomationProperties.AutomationId="Nav.SwitchVault">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <c:Icon Data="{StaticResource Icon.Folder}" Width="15" Height="15" />
+                                        <TextBlock Text="Switch Vault" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Classes="secondary" Padding="9,7" Margin="6,0,0,0"
+                                        Command="{Binding LockCommand}"
+                                        ToolTip.Tip="Lock vault"
+                                        AutomationProperties.AutomationId="Nav.Lock">
+                                    <c:Icon Data="{StaticResource Icon.Lock}" Width="15" Height="15" />
                                 </Button>
                             </Grid>
                         </Border>
+                    </Grid>
+                </Border>
 
-                        <!-- Table Rows List -->
-                        <ListBox Grid.Row="1" ItemsSource="{Binding FilteredEntries}"
+                <!-- ==================== COLUMN 1: KEY LIST ==================== -->
+                <Border Grid.Column="1" x:Name="ListPane" Background="{StaticResource SurfaceBaseBrush}" SizeChanged="OnListPaneSizeChanged">
+                    <Grid RowDefinitions="Auto, Auto, *">
+                        <!-- Title bar -->
+                        <Grid Grid.Row="0" ColumnDefinitions="*, Auto" Margin="22,18,14,10">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding FilterTitle}" FontSize="19" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" />
+                                <Border Classes="count" Padding="8,2">
+                                    <TextBlock Text="{Binding FilteredCountText}" />
+                                </Border>
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding ToggleInspectorCommand}"
+                                    Classes="subtle" Padding="7" VerticalAlignment="Center"
+                                    ToolTip.Tip="Toggle details panel">
+                                <c:Icon Data="{StaticResource Icon.PanelRight}" Width="16" Height="16" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Column headers -->
+                        <Border Grid.Row="1" IsVisible="{Binding !HasNoKeys}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="28,6,28,8">
+                            <Grid ColumnDefinitions="*, Auto, Auto, Auto">
+                                <TextBlock Grid.Column="0" Classes="section" Margin="0" Text="KEY" />
+                                <TextBlock Grid.Column="1" Classes="section statusCol statusHeader" Margin="0" Text="STATUS" />
+                                <TextBlock Grid.Column="2" Classes="section tagsCol" Margin="0" Text="TAGS" />
+                                <TextBlock Grid.Column="3" Classes="section" Margin="0" Width="56" Text="EXPIRES" TextAlignment="Right" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Rows -->
+                        <ListBox Grid.Row="2" ItemsSource="{Binding FilteredEntries}"
                                  SelectedItem="{Binding SelectedEntry}"
-                                 Background="Transparent"
+                                 Background="Transparent" Padding="0,6"
                                  Tapped="OnEntryListTapped"
                                  AutomationProperties.AutomationId="Entry.List">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="vm:EntryItemViewModel">
-                                    <Grid ColumnDefinitions="*, 72, 68, 70, 52" Margin="2,6" ClipToBounds="True">
-                                        <!-- Key Name & Subtitle -->
-                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,8,0" ClipToBounds="True">
-                                            <TextBlock Text="{Binding Address}" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding Comment}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
+                                    <Grid ColumnDefinitions="*, Auto, Auto, Auto" ClipToBounds="True">
+                                        <!-- Provider avatar + name -->
+                                        <Grid Grid.Column="0" ColumnDefinitions="Auto, *" Margin="0,0,10,0">
+                                            <Border Width="34" Height="34" CornerRadius="9"
+                                                    Background="{Binding ProviderTint}" BorderBrush="{Binding ProviderBorder}" BorderThickness="1"
+                                                    VerticalAlignment="Center" ToolTip.Tip="{Binding ProviderDisplayName}">
+                                                <TextBlock Text="{Binding ProviderInitial}" Foreground="{Binding ProviderColor}" FontSize="14" FontWeight="Bold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" Margin="12,0,0,0">
+                                                <TextBlock Text="{Binding Address}" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="11.5" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Grid>
 
-                                        <!-- Platform Badge -->
-                                        <Border Grid.Column="1" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="5,2" VerticalAlignment="Center" HorizontalAlignment="Left" ClipToBounds="True">
-                                            <TextBlock Text="{Binding ProviderDisplayName}" FontSize="10" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceBrush}" TextTrimming="CharacterEllipsis" />
-                                        </Border>
+                                        <!-- Status pill -->
+                                        <Panel Grid.Column="1" Classes="statusCol">
+                                            <Border Classes="statusPill" Background="{Binding StatusBackground}" BorderBrush="{Binding StatusBorder}" BorderThickness="1"
+                                                    CornerRadius="999" Padding="8,2,9,3" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                    ToolTip.Tip="{Binding StatusText}">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <Ellipse Width="6" Height="6" Fill="{Binding StatusColor}" VerticalAlignment="Center" />
+                                                    <TextBlock Classes="statusLabel" Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Panel>
 
-                                        <!-- Status Dot + Text -->
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" ClipToBounds="True">
-                                            <TextBlock Text="{Binding StatusIcon}" Foreground="{Binding StatusColor}" FontSize="9" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
-
-                                        <!-- Detected Tags Badges -->
-                                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center" Margin="0,0,4,0" ClipToBounds="True">
+                                        <!-- Tags -->
+                                        <StackPanel Grid.Column="2" Classes="tagsCol" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center" ClipToBounds="True">
                                             <ItemsControl ItemsSource="{Binding VisibleTagBadges}">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
@@ -394,216 +567,331 @@
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="vm:TagBadgeViewModel">
                                                         <Border Background="{Binding BackgroundColor}" BorderBrush="{Binding BorderColor}"
-                                                                BorderThickness="1" CornerRadius="4" Padding="4,1" VerticalAlignment="Center"
+                                                                BorderThickness="1" CornerRadius="5" Padding="5,1" VerticalAlignment="Center"
                                                                 ToolTip.Tip="{Binding Tooltip}">
-                                                            <TextBlock Text="{Binding DisplayText}" FontSize="9" FontWeight="SemiBold"
+                                                            <TextBlock Text="{Binding DisplayText}" FontSize="9.5" FontWeight="SemiBold"
                                                                        Foreground="{Binding ForegroundColor}" VerticalAlignment="Center" />
                                                         </Border>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
 
-                                            <!-- Overflow Tag Pill (+N) -->
                                             <Border IsVisible="{Binding HasOverflowTags}"
                                                     Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}"
-                                                    BorderThickness="1" CornerRadius="4" Padding="3,1" VerticalAlignment="Center"
+                                                    BorderThickness="1" CornerRadius="5" Padding="4,1" VerticalAlignment="Center"
                                                     ToolTip.Tip="{Binding TagsDisplay}">
-                                                <TextBlock Text="{Binding OverflowTagText}" FontSize="8" FontWeight="Bold"
+                                                <TextBlock Text="{Binding OverflowTagText}" FontSize="9" FontWeight="Bold"
                                                            Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
                                             </Border>
 
-                                            <!-- Subtle dash when no tags exist -->
                                             <TextBlock IsVisible="{Binding HasNoTags}" Text="—"
-                                                       Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="11" Opacity="0.4"
+                                                       Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="11" Opacity="0.5"
                                                        VerticalAlignment="Center" Margin="2,0,0,0" />
                                         </StackPanel>
 
-                                        <!-- Expiry Description -->
-                                        <TextBlock Grid.Column="4" Text="{Binding ExpiryTableDescription}" ToolTip.Tip="{Binding ExpiryDescription}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0" TextTrimming="CharacterEllipsis" />
+                                        <!-- Expiry -->
+                                        <TextBlock Grid.Column="3" Text="{Binding ExpiryTableDescription}" ToolTip.Tip="{Binding ExpiryDescription}"
+                                                   Foreground="{Binding ExpiryColor}" FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                                   Width="56" TextAlignment="Right" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
+
+                        <!-- Empty vault -->
+                        <StackPanel Grid.Row="2" IsVisible="{Binding HasNoKeys}" Spacing="14" MaxWidth="320"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+                            <!-- Stacked-cards illustration -->
+                            <Canvas Width="150" Height="104" HorizontalAlignment="Center">
+                                <Border Canvas.Left="22" Canvas.Top="14" Width="104" Height="66" CornerRadius="12"
+                                        Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1">
+                                    <Border.RenderTransform>
+                                        <RotateTransform Angle="-9" />
+                                    </Border.RenderTransform>
+                                </Border>
+                                <Border Canvas.Left="26" Canvas.Top="18" Width="104" Height="66" CornerRadius="12"
+                                        Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1">
+                                    <Border.RenderTransform>
+                                        <RotateTransform Angle="7" />
+                                    </Border.RenderTransform>
+                                </Border>
+                                <Border Canvas.Left="23" Canvas.Top="26" Width="104" Height="66" CornerRadius="12"
+                                        Background="{StaticResource SurfaceContainerHighestBrush}" BorderBrush="#5910b981" BorderThickness="1"
+                                        BoxShadow="0 12 30 0 #8c000000" Padding="12">
+                                    <Grid ColumnDefinitions="Auto, *" RowDefinitions="*, *">
+                                        <Border Grid.RowSpan="2" Classes="iconTile" Width="32" Height="32" CornerRadius="9" VerticalAlignment="Center" Margin="0,0,10,0">
+                                            <c:Icon Data="{StaticResource Icon.Key}" Width="16" Height="16" />
+                                        </Border>
+                                        <Border Grid.Column="1" Grid.Row="0" Height="6" CornerRadius="3" Background="#33eef2f7" VerticalAlignment="Bottom" Margin="0,0,6,4" />
+                                        <Border Grid.Column="1" Grid.Row="1" Height="5" CornerRadius="3" Background="#1aeef2f7" VerticalAlignment="Top" Margin="0,3,22,0" />
+                                    </Grid>
+                                </Border>
+                            </Canvas>
+                            <TextBlock Text="Your vault is empty" FontSize="17" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" />
+                            <TextBlock Text="Add your first API key, import an existing .env file, or load sample keys to explore."
+                                       TextWrapping="Wrap" TextAlignment="Center" FontSize="12.5" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                            <StackPanel Spacing="8" Margin="0,6,0,0">
+                                <Button Command="{Binding OpenAddKeyDialogCommand}" Classes="primary" HorizontalAlignment="Stretch" Height="38">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <c:Icon Data="{StaticResource Icon.Plus}" Width="15" Height="15" StrokeThickness="2.4" />
+                                        <TextBlock Text="Add API Key" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Grid ColumnDefinitions="*, *">
+                                    <Button Grid.Column="0" Margin="0,0,4,0" Command="{Binding ImportKeysCommand}" Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36">
+                                        <StackPanel Orientation="Horizontal" Spacing="7">
+                                            <c:Icon Data="{StaticResource Icon.Import}" Width="14" Height="14" />
+                                            <TextBlock Text="Import .env / JSON" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="1" Margin="4,0,0,0" Command="{Binding PopulateDemoKeysCommand}" Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36">
+                                        <StackPanel Orientation="Horizontal" Spacing="7">
+                                            <c:Icon Data="{StaticResource Icon.Sparkles}" Width="14" Height="14" />
+                                            <TextBlock Text="Sample keys" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- No matches -->
+                        <StackPanel Grid.Row="2" IsVisible="{Binding HasNoMatchingEntries}" Spacing="10" MaxWidth="300"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+                            <Border Width="52" Height="52" CornerRadius="26" Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1" HorizontalAlignment="Center">
+                                <c:Icon Data="{StaticResource Icon.Search}" Width="22" Height="22" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                            </Border>
+                            <TextBlock Text="No matching keys" FontSize="15" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            <TextBlock Text="Nothing matches the current search or filter." TextWrapping="Wrap" TextAlignment="Center" FontSize="12" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                            <Button Content="Clear filters" Command="{Binding ClearFiltersCommand}" Classes="secondary" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                        </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- ==================== COLUMN 2: RIGHT INSPECTOR PANEL (COLLAPSIBLE) ==================== -->
-                <Border Grid.Column="2" Width="300" IsVisible="{Binding IsInspectorVisible}"
-                        Background="{StaticResource SurfaceLowestBrush}" Padding="12" AutomationProperties.AutomationId="Detail.Pane">
+                <!-- ==================== COLUMN 2: INSPECTOR (COLLAPSIBLE) ==================== -->
+                <Border Grid.Column="2" Width="316" IsVisible="{Binding IsInspectorVisible}"
+                        Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1,0,0,0"
+                        Padding="12" AutomationProperties.AutomationId="Detail.Pane">
                     <Grid>
-                        <!-- Empty State Canvas (when 0 entries exist) -->
-                        <Border IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNull}}"
-                                Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <StackPanel Spacing="16" HorizontalAlignment="Center" MaxWidth="300">
-                                <Border Width="56" Height="56" CornerRadius="28" Background="{StaticResource PrimaryBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" HorizontalAlignment="Center">
-                                    <TextBlock Text="🔑" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <TextBlock Text="No Keys Selected" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" />
-                                <TextBlock Text="Create your first API key, or load sample keys to explore ApiKeyVault."
-                                           TextWrapping="Wrap" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" TextAlignment="Center" FontSize="12" />
-                                <StackPanel Spacing="10" Margin="0,8,0,0">
-                                    <Button Content="+ Add API Key" Command="{Binding OpenAddKeyDialogCommand}"
-                                            Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" />
-                                    <Button Content="✨ Load Sample Keys" Command="{Binding PopulateDemoKeysCommand}"
-                                            Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" />
-                                    <Button Content="Import from .env / JSON" Command="{Binding ImportKeysCommand}"
-                                            Classes="subtle" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="32" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
+                        <!-- Nothing selected -->
+                        <StackPanel IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNull}}"
+                                    Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="220">
+                            <Border Width="56" Height="56" CornerRadius="16" Classes="iconTile" HorizontalAlignment="Center">
+                                <c:Icon Data="{StaticResource Icon.Key}" Width="24" Height="24" />
+                            </Border>
+                            <TextBlock Text="No key selected" FontSize="15" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            <TextBlock Text="Pick a key from the list to view, copy or edit it."
+                                       TextWrapping="Wrap" Foreground="{StaticResource OnSurfaceMutedBrush}" TextAlignment="Center" FontSize="12" />
+                        </StackPanel>
 
                         <!-- Key Selected Inspector Card -->
-                        <Border IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="16">
+                        <Border Classes="card" CornerRadius="14" Padding="0"
+                                IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" AllowAutoHide="True">
-                                <StackPanel Spacing="11">
-                                    <!-- Header: Title + Status Icon + Close Button -->
-                                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,2">
-                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding SelectedEntry.StatusIcon}" FontSize="14" Foreground="{Binding SelectedEntry.StatusColor}" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding SelectedEntry.Address}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                <StackPanel Spacing="14" Margin="16,16,16,14">
+                                    <!-- Header -->
+                                    <Grid ColumnDefinitions="Auto, *, Auto">
+                                        <Border Grid.Column="0" Width="42" Height="42" CornerRadius="11"
+                                                Background="{Binding SelectedEntry.ProviderTint}" BorderBrush="{Binding SelectedEntry.ProviderBorder}" BorderThickness="1"
+                                                VerticalAlignment="Top" Margin="0,0,12,0">
+                                            <TextBlock Text="{Binding SelectedEntry.ProviderInitial}" Foreground="{Binding SelectedEntry.ProviderColor}" FontSize="18" FontWeight="Bold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding SelectedEntry.Address}" FontSize="15" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}"
+                                                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedEntry.Address}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <Border Background="{Binding SelectedEntry.StatusBackground}" BorderBrush="{Binding SelectedEntry.StatusBorder}" BorderThickness="1"
+                                                        CornerRadius="999" Padding="7,1,8,2" VerticalAlignment="Center">
+                                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                                        <Ellipse Width="6" Height="6" Fill="{Binding SelectedEntry.StatusColor}" VerticalAlignment="Center" />
+                                                        <TextBlock Text="{Binding SelectedEntry.StatusText}" Foreground="{Binding SelectedEntry.StatusColor}" FontSize="10.5" FontWeight="SemiBold" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <TextBlock Text="{Binding SelectedEntry.ProviderDisplayName}" FontSize="11.5" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
+                                            </StackPanel>
                                         </StackPanel>
-                                        <Button Grid.Column="1" Command="{Binding CloseInspectorCommand}"
-                                                Classes="subtle" Padding="6,2" VerticalAlignment="Center"
+                                        <Button Grid.Column="2" Command="{Binding CloseInspectorCommand}"
+                                                Classes="subtle" Padding="6" VerticalAlignment="Top" Margin="6,-2,-4,0"
                                                 ToolTip.Tip="Close details panel">
-                                            <TextBlock Text="✕" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                            <c:Icon Data="{StaticResource Icon.X}" Width="13" Height="13" />
                                         </Button>
                                     </Grid>
 
-                                    <!-- Description Subtitle (if available) -->
+                                    <!-- Description -->
                                     <TextBlock Text="{Binding SelectedEntry.Comment}" FontSize="12" Foreground="{StaticResource OnSurfaceMutedBrush}"
-                                               TextWrapping="Wrap" IsVisible="{Binding SelectedEntry.HasComment}" Margin="0,-4,0,2" />
+                                               TextWrapping="Wrap" IsVisible="{Binding SelectedEntry.HasComment}" Margin="0,-4,0,0" />
 
-                                    <!-- Compromised Alert Banner -->
-                                    <Border IsVisible="{Binding SelectedEntry.IsCompromised}"
-                                            Background="#2a1015" BorderBrush="{StaticResource StatusDangerBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8">
-                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <TextBlock Text="⚠️" FontSize="14" VerticalAlignment="Center" />
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Key is marked as compromised!" FontWeight="Bold" FontSize="11" Foreground="#f87171" />
-                                                <TextBlock Text="This key may be leaked. Rotate or revoke it immediately." FontSize="10" Foreground="#fca5a5" TextWrapping="Wrap" />
+                                    <!-- Compromised Alert -->
+                                    <Border Classes="banner danger" IsVisible="{Binding SelectedEntry.IsCompromised}">
+                                        <Grid ColumnDefinitions="Auto, *">
+                                            <c:Icon Data="{StaticResource Icon.ShieldAlert}" Width="16" Height="16" Foreground="#fb7185" VerticalAlignment="Top" Margin="0,1,10,0" />
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Text="Marked as compromised" FontWeight="Bold" FontSize="12" Foreground="#fb7185" />
+                                                <TextBlock Text="This key may be leaked. Rotate or revoke it immediately." FontSize="11" Foreground="#fda4af" TextWrapping="Wrap" />
                                             </StackPanel>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <!-- Expiring Alert Banner -->
-                                    <Border IsVisible="{Binding SelectedEntry.IsExpiringSoon}"
-                                            Background="#2c1a06" BorderBrush="{StaticResource StatusWarningBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8">
-                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <TextBlock Text="▲" FontSize="13" Foreground="{StaticResource StatusWarningBrush}" VerticalAlignment="Center" />
-                                            <StackPanel Spacing="1">
-                                                <TextBlock Text="Key expires soon!" FontWeight="Bold" FontSize="11" Foreground="{StaticResource StatusWarningBrush}" />
-                                                <TextBlock Text="{Binding SelectedEntry.ExpiryDescription}" FontSize="10" Foreground="#fde68a" />
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </Border>
-
-                                    <!-- Revoked Alert Banner -->
-                                    <Border IsVisible="{Binding SelectedEntry.IsRevoked}"
-                                            Background="#1e293b" BorderBrush="#64748b" BorderThickness="1" CornerRadius="8" Padding="12,8">
-                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                            <TextBlock Text="⊘" FontSize="13" Foreground="#94a3b8" VerticalAlignment="Center" />
-                                            <TextBlock Text="This key has been revoked and is inactive." FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center" />
-                                        </StackPanel>
-                                    </Border>
-
-                                    <!-- Secret Field with Monospace & Reveal -->
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Secret" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                        <Grid ColumnDefinitions="*, Auto">
-                                            <TextBox Grid.Column="0" Text="{Binding RevealedSecret}" IsReadOnly="True" Height="34" FontFamily="Consolas, monospace" FontSize="12" />
-                                            <Button Grid.Column="1" Command="{Binding ToggleRevealSecretCommand}"
-                                                    Classes="secondary" Margin="6,0,0,0" Height="34" Padding="10,0"
-                                                    AutomationProperties.AutomationId="Entry.Reveal">
-                                                <TextBlock Text="👁" FontSize="13" />
-                                            </Button>
                                         </Grid>
-                                        <!-- Big Emerald Copy Key Button -->
-                                        <Button Content="Copy Key" Command="{Binding CopySecretCommand}"
-                                                Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="38" Margin="0,4,0,0"
-                                                AutomationProperties.AutomationId="Entry.Copy" FontWeight="SemiBold" FontSize="13" />
-                                        <TextBlock Text="Copied!" FontSize="11" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Center"
-                                                   IsVisible="{Binding ClipboardCountdownText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                    </Border>
+
+                                    <!-- Expiring Alert -->
+                                    <Border Classes="banner warning" IsVisible="{Binding SelectedEntry.IsExpiringSoon}">
+                                        <Grid ColumnDefinitions="Auto, *">
+                                            <c:Icon Data="{StaticResource Icon.Clock}" Width="16" Height="16" Foreground="{StaticResource StatusWarningBrush}" VerticalAlignment="Top" Margin="0,1,10,0" />
+                                            <StackPanel Grid.Column="1" Spacing="2">
+                                                <TextBlock Text="Expires soon" FontWeight="Bold" FontSize="12" Foreground="{StaticResource StatusWarningBrush}" />
+                                                <TextBlock Text="{Binding SelectedEntry.ExpiryDescription}" FontSize="11" Foreground="#fcd34d" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Revoked Alert -->
+                                    <Border Classes="banner neutral" IsVisible="{Binding SelectedEntry.IsRevoked}">
+                                        <Grid ColumnDefinitions="Auto, *">
+                                            <c:Icon Data="{StaticResource Icon.Ban}" Width="16" Height="16" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,0,10,0" />
+                                            <TextBlock Grid.Column="1" Text="This key has been revoked and is inactive." FontSize="11.5" Foreground="{StaticResource OnSurfaceMutedBrush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Secret -->
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Classes="label" Text="SECRET" />
+                                        <TextBox Classes="mono" Text="{Binding RevealedSecret}" IsReadOnly="True" Height="38">
+                                            <TextBox.InnerRightContent>
+                                                <Button Command="{Binding ToggleRevealSecretCommand}" Classes="subtle" Padding="7" Margin="0,0,4,0"
+                                                        ToolTip.Tip="Show / hide secret"
+                                                        AutomationProperties.AutomationId="Entry.Reveal">
+                                                    <Panel>
+                                                        <c:Icon Data="{StaticResource Icon.Eye}" Width="15" Height="15" IsVisible="{Binding !IsSecretRevealed}" />
+                                                        <c:Icon Data="{StaticResource Icon.EyeOff}" Width="15" Height="15" IsVisible="{Binding IsSecretRevealed}" />
+                                                    </Panel>
+                                                </Button>
+                                            </TextBox.InnerRightContent>
+                                        </TextBox>
+                                        <Button Command="{Binding CopySecretCommand}"
+                                                Classes="primary" HorizontalAlignment="Stretch" Height="40" Margin="0,2,0,0"
+                                                AutomationProperties.AutomationId="Entry.Copy">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <c:Icon Data="{StaticResource Icon.Copy}" Width="15" Height="15" />
+                                                <TextBlock Text="Copy Key" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center"
+                                                    IsVisible="{Binding ClipboardCountdownText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <c:Icon Data="{StaticResource Icon.Check}" Width="12" Height="12" Foreground="{StaticResource SecondaryBrush}" StrokeThickness="2.6" />
+                                            <TextBlock Text="{Binding ClipboardCountdownText}" FontSize="11" Foreground="{StaticResource SecondaryBrush}" />
+                                        </StackPanel>
                                     </StackPanel>
 
-                                    <!-- Metadata Properties -->
-                                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,4">
-                                        <Grid ColumnDefinitions="95, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto">
-                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Platform" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
-                                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedEntry.ProviderDisplayName}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" />
-
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Tags" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" Margin="0,3" />
-                                            <Panel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,2">
-                                                <ItemsControl ItemsSource="{Binding SelectedEntry.TagBadges}" IsVisible="{Binding SelectedEntry.HasTags}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Right" />
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate DataType="vm:TagBadgeViewModel">
-                                                            <Border Background="{Binding BackgroundColor}" BorderBrush="{Binding BorderColor}"
-                                                                    BorderThickness="1" CornerRadius="5" Padding="6,2" Margin="2,1"
-                                                                    ToolTip.Tip="{Binding Tooltip}">
-                                                                <TextBlock Text="{Binding DisplayText}" FontSize="10" FontWeight="SemiBold"
-                                                                           Foreground="{Binding ForegroundColor}" />
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                                <TextBlock Text="No tags" IsVisible="{Binding SelectedEntry.HasNoTags}"
-                                                           FontSize="11" Foreground="{StaticResource OnSurfaceDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                                            </Panel>
-
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Status" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedEntry.StatusText}" FontSize="11" Foreground="{Binding SelectedEntry.StatusColor}" FontWeight="Bold" HorizontalAlignment="Right" Margin="0,3" />
-
-                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Expires" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
-                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedEntry.ExpiryDescription}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" TextTrimming="CharacterEllipsis" />
-
-                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Last Tested" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
-                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedEntry.TestStatusDescription}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" TextTrimming="CharacterEllipsis" />
-                                        </Grid>
+                                    <!-- Details -->
+                                    <Border Classes="well" Padding="14,4">
+                                        <StackPanel>
+                                            <Grid ColumnDefinitions="Auto, *" Margin="0,8">
+                                                <TextBlock Text="Platform" FontSize="11.5" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding SelectedEntry.ProviderDisplayName}" FontSize="11.5" FontWeight="Medium" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" />
+                                            </Grid>
+                                            <Separator />
+                                            <Grid ColumnDefinitions="Auto, *" Margin="0,6">
+                                                <TextBlock Text="Tags" FontSize="11.5" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
+                                                <Panel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0">
+                                                    <ItemsControl ItemsSource="{Binding SelectedEntry.TagBadges}" IsVisible="{Binding SelectedEntry.HasTags}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Right" />
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate DataType="vm:TagBadgeViewModel">
+                                                                <Border Background="{Binding BackgroundColor}" BorderBrush="{Binding BorderColor}"
+                                                                        BorderThickness="1" CornerRadius="5" Padding="6,1" Margin="2,1"
+                                                                        ToolTip.Tip="{Binding Tooltip}">
+                                                                    <TextBlock Text="{Binding DisplayText}" FontSize="10" FontWeight="SemiBold"
+                                                                               Foreground="{Binding ForegroundColor}" />
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <TextBlock Text="No tags" IsVisible="{Binding SelectedEntry.HasNoTags}"
+                                                               FontSize="11.5" Foreground="{StaticResource OnSurfaceDimBrush}" HorizontalAlignment="Right" />
+                                                </Panel>
+                                            </Grid>
+                                            <Separator />
+                                            <Grid ColumnDefinitions="Auto, *" Margin="0,8">
+                                                <TextBlock Text="Expires" FontSize="11.5" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding SelectedEntry.ExpiryDescription}" FontSize="11.5" FontWeight="Medium" Foreground="{Binding SelectedEntry.ExpiryColor}" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0" />
+                                            </Grid>
+                                            <Separator />
+                                            <Grid ColumnDefinitions="Auto, *" Margin="0,8">
+                                                <TextBlock Text="Last tested" FontSize="11.5" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding SelectedEntry.TestStatusDescription}" FontSize="11.5" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"
+                                                           ToolTip.Tip="{Binding SelectedEntry.TestStatusDescription}" />
+                                            </Grid>
+                                        </StackPanel>
                                     </Border>
 
-                                    <!-- Security & Compromised Checkbox Card -->
-                                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,2">
-                                        <Grid ColumnDefinitions="*, Auto">
-                                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                                                <TextBlock Text="Security Status" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" />
-                                                <TextBlock Text="Flag if secret is leaked, exposed, or at risk" FontSize="10" Foreground="{StaticResource OnSurfaceMutedBrush}" TextWrapping="Wrap" />
+                                    <!-- Security -->
+                                    <Border Classes="well" Padding="14,10">
+                                        <Grid ColumnDefinitions="Auto, *, Auto">
+                                            <c:Icon Grid.Column="0" Data="{StaticResource Icon.ShieldAlert}" Width="16" Height="16" Foreground="{StaticResource StatusDangerBrush}" VerticalAlignment="Top" Margin="0,1,10,0" />
+                                            <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center" Margin="0,0,10,0">
+                                                <TextBlock Text="Compromised" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" />
+                                                <TextBlock Text="Flag if this secret was leaked or exposed." FontSize="11" Foreground="{StaticResource OnSurfaceDimBrush}" TextWrapping="Wrap" />
                                             </StackPanel>
-                                            <CheckBox Grid.Column="1"
+                                            <CheckBox Grid.Column="2"
                                                       IsChecked="{Binding SelectedEntry.IsCompromised, Mode=OneWay}"
                                                       Command="{Binding ToggleSelectedEntryCompromisedCommand}"
-                                                      Content="Compromised"
-                                                      FontWeight="SemiBold"
-                                                      FontSize="11"
-                                                      Foreground="{StaticResource StatusDangerBrush}"
-                                                      VerticalAlignment="Center" />
+                                                      ToolTip.Tip="Mark as compromised"
+                                                      MinWidth="0" VerticalAlignment="Center" />
                                         </Grid>
                                     </Border>
 
-                                    <!-- Action Buttons -->
-                                    <Grid ColumnDefinitions="*, *" Margin="0,8,0,0">
-                                        <Button Grid.Column="0" Content="{Binding SelectedEntry.RevokeButtonText}" Command="{Binding ToggleSelectedEntryRevokedCommand}"
-                                                Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Margin="0,0,4,0"
-                                                AutomationProperties.AutomationId="Entry.Revoke" />
-                                        <Button Grid.Column="1" Content="Edit Key" Command="{Binding OpenEditKeyDialogCommand}"
-                                                Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Margin="4,0,0,0"
-                                                AutomationProperties.AutomationId="Entry.Edit" />
+                                    <!-- Primary actions -->
+                                    <Grid ColumnDefinitions="*, *" Margin="0,2,0,0">
+                                        <Button Grid.Column="0" Margin="0,0,4,0" Command="{Binding ToggleSelectedEntryRevokedCommand}"
+                                                Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36"
+                                                AutomationProperties.AutomationId="Entry.Revoke">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <Panel>
+                                                    <c:Icon Data="{StaticResource Icon.Ban}" Width="14" Height="14" IsVisible="{Binding !SelectedEntry.IsRevoked}" />
+                                                    <c:Icon Data="{StaticResource Icon.Undo}" Width="14" Height="14" IsVisible="{Binding SelectedEntry.IsRevoked}" />
+                                                </Panel>
+                                                <TextBlock Text="{Binding SelectedEntry.RevokeButtonText}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="1" Margin="4,0,0,0" Command="{Binding OpenEditKeyDialogCommand}"
+                                                Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36"
+                                                AutomationProperties.AutomationId="Entry.Edit">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                                <c:Icon Data="{StaticResource Icon.Pencil}" Width="14" Height="14" />
+                                                <TextBlock Text="Edit Key" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
                                     </Grid>
 
-                                    <!-- Secondary Utility Actions -->
-                                    <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,6,0,0">
-                                        <Button Grid.Column="0" Content="✓ Test Key" Command="{Binding TestSelectedEntryCommand}"
+                                    <!-- Utility actions -->
+                                    <Grid ColumnDefinitions="*, *, *" Margin="-6,-4,-6,0">
+                                        <Button Grid.Column="0" Command="{Binding TestSelectedEntryCommand}"
                                                 ToolTip.Tip="{Binding SelectedEntry.TestSupportTooltip}"
-                                                Classes="subtle" FontSize="11" Padding="8,4" />
-                                        <Button Grid.Column="1" Content="Copy akv run" Command="{Binding CopyAsCommandCommand}"
-                                                Classes="subtle" FontSize="11" HorizontalAlignment="Center" Padding="8,4" />
-                                        <Button Grid.Column="2" Content="🗑 Delete Key" Command="{Binding DeleteSelectedEntryCommand}"
-                                                Classes="subtle" FontSize="11" Foreground="{StaticResource StatusDangerBrush}" HorizontalAlignment="Right" Padding="8,4"
-                                                AutomationProperties.AutomationId="Entry.Delete" />
+                                                Classes="subtle" FontSize="11.5" HorizontalAlignment="Center" Padding="8,5">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <c:Icon Data="{StaticResource Icon.Activity}" Width="13" Height="13" />
+                                                <TextBlock Text="Test" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="1" Command="{Binding CopyAsCommandCommand}"
+                                                ToolTip.Tip="Copy an 'akv run' command that injects this key"
+                                                Classes="subtle" FontSize="11.5" HorizontalAlignment="Center" Padding="8,5">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <c:Icon Data="{StaticResource Icon.Terminal}" Width="13" Height="13" />
+                                                <TextBlock Text="akv run" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="2" Command="{Binding DeleteSelectedEntryCommand}"
+                                                Classes="subtle dangerText" FontSize="11.5" HorizontalAlignment="Center" Padding="8,5"
+                                                AutomationProperties.AutomationId="Entry.Delete">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <c:Icon Data="{StaticResource Icon.Trash}" Width="13" Height="13" />
+                                                <TextBlock Text="Delete" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
                                     </Grid>
                                 </StackPanel>
                             </ScrollViewer>
@@ -613,115 +901,170 @@
             </Grid>
 
             <!-- Bottom Status Strip -->
-            <Border Grid.Row="1" Height="26" Background="{StaticResource SurfaceLowestBrush}" Padding="16,0" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0">
-                <Grid ColumnDefinitions="Auto, *, Auto">
+            <Border Grid.Row="1" Height="28" Background="{StaticResource SurfaceLowestBrush}" Padding="14,0" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0">
+                <Grid ColumnDefinitions="*, Auto, *">
                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                        <TextBlock Text="●" Foreground="{StaticResource PrimaryBrush}" FontSize="7" VerticalAlignment="Center" />
-                        <TextBlock Text="Encrypted &amp; Synced" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10" VerticalAlignment="Center" />
+                        <c:Icon Data="{StaticResource Icon.ShieldCheck}" Width="12" Height="12" Foreground="{StaticResource PrimaryBrush}" />
+                        <TextBlock Text="Encrypted &amp; Synced" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10.5" VerticalAlignment="Center" />
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="{Binding LastSyncTimeText, StringFormat='Last synced at {0}'}" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                    <TextBlock Grid.Column="2" Text="{Binding DeviceCountText, StringFormat='{}{0} · Online'}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <c:Icon Data="{StaticResource Icon.Refresh}" Width="11" Height="11" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                        <TextBlock Text="{Binding LastSyncTimeText, StringFormat='Last synced {0}'}" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="10.5" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" HorizontalAlignment="Right">
+                        <c:Icon Data="{StaticResource Icon.Monitor}" Width="12" Height="12" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                        <TextBlock Text="{Binding DeviceCountText}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10.5" VerticalAlignment="Center" />
+                        <Ellipse Width="6" Height="6" Fill="{StaticResource PrimaryBrush}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                        <TextBlock Text="Online" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10.5" VerticalAlignment="Center" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </Grid>
 
         <!-- ======================================================== -->
-        <!-- 4. ADD / EDIT KEY MODAL OVERLAY (Obsidian Vault v2)      -->
+        <!-- 4. ADD / EDIT KEY MODAL                                  -->
         <!-- ======================================================== -->
-        <Border IsVisible="{Binding IsAddKeyDialogOpen}" Background="#b3030712" Padding="20">
-            <Border Width="500" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderFocusBrush}" BorderThickness="1" CornerRadius="14" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel Spacing="14">
-                    <!-- Dialog Header -->
-                    <TextBlock Text="{Binding KeyDialogTitle}" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" />
+        <Border IsVisible="{Binding IsAddKeyDialogOpen}" Background="#c4030509" Padding="20">
+            <Border Classes="card elevated" Width="520" Padding="0" HorizontalAlignment="Center" VerticalAlignment="Center" BorderBrush="{StaticResource BorderStrongBrush}">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Header -->
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" Margin="24,22,18,6">
+                        <Border Grid.Column="0" Classes="iconTile" Width="38" Height="38" Margin="0,0,14,0" VerticalAlignment="Center">
+                            <c:Icon Data="{StaticResource Icon.Key}" Width="18" Height="18" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding KeyDialogTitle}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" />
+                            <TextBlock Text="Encrypted before it ever touches disk." FontSize="12" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Command="{Binding CancelKeyDialogCommand}" Classes="subtle" Padding="7" VerticalAlignment="Top" ToolTip.Tip="Close (Esc)">
+                            <c:Icon Data="{StaticResource Icon.X}" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
 
-                    <!-- Key Address -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="KEY ADDRESS (e.g. anthropic/intent, openai/personal, stripe/live)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <TextBox Text="{Binding KeyDialogAddress}" Height="36" Watermark="provider/name (e.g. anthropic/intent)">
-                            <TextBox.KeyBindings>
-                                <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
-                                <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
-                            </TextBox.KeyBindings>
-                        </TextBox>
-                    </StackPanel>
+                    <!-- Fields -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="16" Margin="24,14,24,20">
+                            <!-- Key Address -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="KEY ADDRESS" />
+                                <TextBox Text="{Binding KeyDialogAddress}" Height="38" Watermark="provider/name">
+                                    <TextBox.KeyBindings>
+                                        <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
+                                        <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
+                                    </TextBox.KeyBindings>
+                                </TextBox>
+                                <TextBlock Classes="helper" Text="e.g. anthropic/intent, openai/personal, stripe/live" />
+                            </StackPanel>
 
-                    <!-- Secret Value -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="API KEY / SECRET VALUE" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <TextBox Text="{Binding KeyDialogSecret}" Height="36" Watermark="Enter secret key..." PasswordChar="•">
-                            <TextBox.KeyBindings>
-                                <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
-                                <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
-                            </TextBox.KeyBindings>
-                        </TextBox>
-                    </StackPanel>
+                            <!-- Secret Value -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="API KEY / SECRET" />
+                                <TextBox Classes="mono" Text="{Binding KeyDialogSecret}" Height="38" Watermark="Paste secret value" PasswordChar="•">
+                                    <TextBox.InnerLeftContent>
+                                        <c:Icon Data="{StaticResource Icon.Lock}" Width="14" Height="14" Margin="11,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                    </TextBox.InnerLeftContent>
+                                    <TextBox.KeyBindings>
+                                        <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
+                                        <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
+                                    </TextBox.KeyBindings>
+                                </TextBox>
+                            </StackPanel>
 
-                    <!-- Comment -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="COMMENT / DESCRIPTION (OPTIONAL)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <TextBox Text="{Binding KeyDialogComment}" Height="36" Watermark="Production billing key, personal project...">
-                            <TextBox.KeyBindings>
-                                <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
-                                <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
-                            </TextBox.KeyBindings>
-                        </TextBox>
-                    </StackPanel>
+                            <!-- Comment + Tags -->
+                            <Grid ColumnDefinitions="*, *">
+                                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="6">
+                                    <TextBlock Classes="label" Text="DESCRIPTION" />
+                                    <TextBox Text="{Binding KeyDialogComment}" Height="38" Watermark="Optional">
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
+                                            <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="6">
+                                    <TextBlock Classes="label" Text="TAGS" />
+                                    <TextBox Text="{Binding KeyDialogTags}" Height="38" Watermark="intent, personal, dev">
+                                        <TextBox.InnerLeftContent>
+                                            <c:Icon Data="{StaticResource Icon.Hash}" Width="13" Height="13" Margin="11,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                        </TextBox.InnerLeftContent>
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
+                                            <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                </StackPanel>
+                            </Grid>
 
-                    <!-- Tags -->
-                    <StackPanel Spacing="4">
-                        <TextBlock Text="TAGS (OPTIONAL, e.g. intent, personal, dev)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <TextBox Text="{Binding KeyDialogTags}" Height="36" Watermark="intent, personal, dev...">
-                            <TextBox.KeyBindings>
-                                <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
-                                <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
-                            </TextBox.KeyBindings>
-                        </TextBox>
-                    </StackPanel>
+                            <!-- Expiration -->
+                            <StackPanel Spacing="8">
+                                <TextBlock Classes="label" Text="EXPIRATION DATE" />
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <CalendarDatePicker Grid.Column="0"
+                                                        SelectedDate="{Binding KeyDialogExpiresDate}"
+                                                        Watermark="No expiry"
+                                                        HorizontalAlignment="Stretch"
+                                                        Height="38" />
+                                    <Button Grid.Column="1" Command="{Binding ClearExpirationDateCommand}" Classes="secondary" Margin="8,0,0,0" Height="38" Padding="11,0" ToolTip.Tip="Clear date">
+                                        <c:Icon Data="{StaticResource Icon.X}" Width="13" Height="13" />
+                                    </Button>
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button Content="+30 days" Command="{Binding SetExpirationDaysCommand}" CommandParameter="30" Classes="chip" />
+                                    <Button Content="+90 days" Command="{Binding SetExpirationDaysCommand}" CommandParameter="90" Classes="chip" />
+                                    <Button Content="+180 days" Command="{Binding SetExpirationDaysCommand}" CommandParameter="180" Classes="chip" />
+                                    <Button Content="+1 year" Command="{Binding SetExpirationDaysCommand}" CommandParameter="365" Classes="chip" />
+                                    <Button Content="No expiry" Command="{Binding ClearExpirationDateCommand}" Classes="chip" />
+                                </StackPanel>
+                            </StackPanel>
 
-                    <!-- Expiration Date (Calendar Input) -->
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="EXPIRATION DATE (OPTIONAL)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <Grid ColumnDefinitions="*, Auto">
-                            <CalendarDatePicker Grid.Column="0"
-                                                SelectedDate="{Binding KeyDialogExpiresDate}"
-                                                Watermark="Pick expiration date..."
-                                                HorizontalAlignment="Stretch"
-                                                Height="36" />
-                            <Button Grid.Column="1" Content="Clear" Command="{Binding ClearExpirationDateCommand}"
-                                    Classes="secondary" Margin="8,0,0,0" Height="36" />
+                            <!-- Security flags (edit only) -->
+                            <Border Classes="well" Padding="14,10" IsVisible="{Binding KeyDialogIsEditing}">
+                                <StackPanel Spacing="6">
+                                    <CheckBox IsChecked="{Binding KeyDialogIsCompromised}" FontSize="12">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="Compromised" FontWeight="SemiBold" Foreground="#fb7185" />
+                                            <TextBlock Text="— secret was exposed or leaked" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                    <CheckBox IsChecked="{Binding KeyDialogIsRevoked}" FontSize="12">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="Revoked" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" />
+                                            <TextBlock Text="— key decommissioned / inactive" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Error -->
+                            <Border Classes="banner danger" IsVisible="{Binding KeyDialogErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <Grid ColumnDefinitions="Auto, *">
+                                    <c:Icon Data="{StaticResource Icon.Alert}" Width="15" Height="15" Foreground="{StaticResource StatusDangerBrush}" Margin="0,0,10,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding KeyDialogErrorMessage}" Foreground="#fda4af" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Footer -->
+                    <Border Grid.Row="2" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0"
+                            CornerRadius="0,0,16,16" Padding="24,14">
+                        <Grid ColumnDefinitions="*, Auto, Auto">
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                <Border Classes="kbd"><TextBlock Text="Enter" /></Border>
+                                <TextBlock Text="to save" FontSize="11" Foreground="{StaticResource OnSurfaceDimBrush}" VerticalAlignment="Center" />
+                                <Border Classes="kbd" Margin="6,0,0,0"><TextBlock Text="Esc" /></Border>
+                                <TextBlock Text="to cancel" FontSize="11" Foreground="{StaticResource OnSurfaceDimBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelKeyDialogCommand}" Classes="secondary" IsCancel="True" Height="36" Padding="16,0" />
+                            <Button Grid.Column="2" Command="{Binding SaveKeyDialogCommand}" Classes="primary" IsDefault="True" Height="36" Margin="10,0,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <c:Icon Data="{StaticResource Icon.Check}" Width="14" Height="14" StrokeThickness="2.4" />
+                                    <TextBlock Text="Save Key" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
                         </Grid>
-                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
-                            <Button Content="+30d" Command="{Binding SetExpirationDaysCommand}" CommandParameter="30" Classes="subtle" FontSize="11" Padding="8,4" />
-                            <Button Content="+90d" Command="{Binding SetExpirationDaysCommand}" CommandParameter="90" Classes="subtle" FontSize="11" Padding="8,4" />
-                            <Button Content="+180d" Command="{Binding SetExpirationDaysCommand}" CommandParameter="180" Classes="subtle" FontSize="11" Padding="8,4" />
-                            <Button Content="+1 Year" Command="{Binding SetExpirationDaysCommand}" CommandParameter="365" Classes="subtle" FontSize="11" Padding="8,4" />
-                            <Button Content="No Expiry" Command="{Binding ClearExpirationDateCommand}" Classes="subtle" FontSize="11" Padding="8,4" />
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- Security Status Checkboxes (Only visible when editing an existing key!) -->
-                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10"
-                            IsVisible="{Binding KeyDialogIsEditing}">
-                        <StackPanel Spacing="8">
-                            <CheckBox IsChecked="{Binding KeyDialogIsCompromised}"
-                                      Content="Flag as Compromised (secret was exposed or leaked)"
-                                      FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource StatusDangerBrush}" />
-                            <CheckBox IsChecked="{Binding KeyDialogIsRevoked}"
-                                      Content="Mark as Revoked (key decommissioned / inactive)"
-                                      FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        </StackPanel>
                     </Border>
-
-                    <!-- Error Message -->
-                    <TextBlock Text="{Binding KeyDialogErrorMessage}" Foreground="{StaticResource StatusDangerBrush}"
-                               IsVisible="{Binding KeyDialogErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-
-                    <!-- Dialog Action Buttons -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,8,0,0">
-                        <Button Content="Cancel" Command="{Binding CancelKeyDialogCommand}" Classes="secondary" IsCancel="True" Height="36" />
-                        <Button Content="Save Key" Command="{Binding SaveKeyDialogCommand}" Classes="primary" IsDefault="True" Height="36" />
-                    </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
         </Border>
     </Grid>

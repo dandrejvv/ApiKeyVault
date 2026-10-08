@@ -47,12 +47,12 @@ On trusted devices, ApiKeyVault binds your hardware using the **OS Credential St
 
 - 🛡️ **Zero-Knowledge Encryption**: All payloads sealed using **XChaCha20-Poly1305 AEAD** with fresh 192-bit nonces. Master passphrases protected by memory-hard **Argon2id**.
 - 💻 **Hardware-Bound Passwordless Unlock**: Enroll trusted workstations and laptops. Devices open the vault instantly without typing a master password, using OS-protected private keys.
-- 📅 **Token Expiration & Review Lifecycle**: Optional calendar date picker (`CalendarDatePicker`) with one-click presets (`+30d`, `+90d`, `+180d`, `+1 Year`, `No Expiry`) to proactively prevent expired keys from disrupting workflows.
+- 📅 **Token Expiration & Review Lifecycle**: Optional calendar date picker (`CalendarDatePicker`) with one-click presets (`+30 days`, `+90 days`, `+180 days`, `+1 year`, `No expiry`) to proactively prevent expired keys from disrupting workflows.
 - 🚀 **Direct Process Injection (`akv run`)**: Run any developer tool or script with secrets injected strictly into memory via environment variables—secrets never touch the disk, terminal history, or process arguments.
 - 📋 **Auto-Shredding Clipboard**: Copy a key with one keystroke; ApiKeyVault automatically scrubs the clipboard memory after 45 seconds.
 - 🩺 **Live Provider Health Checks**: Validate key liveness and connectivity with one click (`akv test`) against OpenAI, Anthropic, OpenRouter, Azure OpenAI, Google Gemini, and custom endpoints.
 - 🔄 **Safe Multi-Device Cloud Sync**: Synchronize seamlessly over OneDrive or cloud drives. Lockbox architecture allows retiring or wiping a lost laptop remotely without resetting other devices.
-- 🖥️ **Obsidian Vault v2 Desktop UI**: Built with Avalonia 11 for cross-platform performance. Features an elegant obsidian dark aesthetic, keyboard-first navigation (Enter/Esc dialog bindings, Ctrl+K search), and quick environment filtering.
+- 🖥️ **Obsidian Vault v2 Desktop UI**: Built with Avalonia 11 for cross-platform performance. Features an obsidian dark aesthetic with crisp vector icons, keyboard-first navigation (Enter/Esc dialog bindings, Ctrl+K search), and quick tag/platform filtering.
 - ⚡ **Cross-Platform CLI**: Full-featured Spectre.Console CLI (`akv`) optimized for interactive developer workflows, CI agents, and shell automation.
 
 ```bash
@@ -173,15 +173,22 @@ dotnet run --project src/ApiKeyVault.UI
 The desktop application is built on **Avalonia 11** with an **Obsidian Dark v2** visual design system.
 
 ### Key Capabilities
-- **Status Dashboard**: Instant metrics on total keys, keys needing attention (`▲`), and environment breakdowns (`Production`, `Development`).
+- **Status Dashboard**: Sidebar counts for all keys and keys needing attention, plus one-click filters per tag and platform (the active filter is highlighted and titles the key list).
+- **Scannable Key List**: Colour-coded provider tiles, status pills (`active`, `expiring`, `expired`, `failing`, `compromised`, `revoked`) and expiry countdowns that turn amber/red as a deadline approaches. Columns adapt to narrow windows (tags hide first, then status collapses to a dot).
 - **Interactive Calendar Date Picker**:
   - Exact calendar date selection (`CalendarDatePicker`) for API tokens with hard expiry dates.
-  - One-click duration presets: `+30d`, `+90d`, `+180d`, `+1 Year`, and `No Expiry`.
+  - One-click duration presets: `+30 days`, `+90 days`, `+180 days`, `+1 year`, and `No expiry`.
   - Timezone-safe local date resolution with UTC serialization.
-- **Fast Fuzzy Search (`Ctrl + K`)**: Find any key by provider, environment, identifier, or comment in real time.
+- **Fast Search (`Ctrl + K`)**: Find any key by provider, name, tag, or comment in real time.
 - **Ephemeral Secret Reveal**: Click the eye icon to view a masked secret; an automated 10-second timer masks it again to protect against shoulder surfing.
 - **One-Click Command Generator**: Copy a ready-to-run `akv run -e ... -- <cmd>` snippet directly to your clipboard.
 - **Lock Screen & Recent Vaults Switcher**: Seamlessly toggle between multiple project vaults with keyboard shortcuts (`Enter` to unlock, `Esc` to cancel).
+- **Guided Empty States**: An empty vault offers *Add API Key*, *Import .env / JSON* and *Sample keys*; a search with no results offers *Clear filters*.
+
+### Visual Design
+- **Design tokens** (surfaces, borders, emerald accent, status colours) and all control styles live in `src/ApiKeyVault.UI/App.axaml`. The Fluent accent is set to emerald so built-in controls (checkboxes, date picker, focus rings) match.
+- **Icons** are stroke-drawn vector paths (`Icon.*` geometries, 24×24 grid) rendered by `Controls/Icon.cs`, which inherits the surrounding text colour — no emoji, so they look identical on every OS.
+- **Brand mark** is a vector `Controls/LogoMark.axaml`; `Assets/app.ico` (16–256 px) is rendered from it and used for the window and executable.
 
 ---
 
@@ -273,6 +280,8 @@ ApiKeyVault includes an automated test suite verifying cryptographic correctness
 # Run all unit and integration tests
 dotnet test ApiKeyVault.slnx -nr:false -p:UseSharedCompilation=false
 ```
+
+The headless UI tests (`HeadlessVisualTests`) render every screen — first run, lock screen, main window at normal/narrow widths, dialogs, filtered, no-match and empty-vault states — to PNG files for visual review. They are written to `%TEMP%/AkvScreenshots` by default; set `AKV_SCREENSHOT_DIR` to choose another folder.
 
 ---
 

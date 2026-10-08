@@ -369,7 +369,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         UpdateEntries();
         SyncStatusText = "Encrypted & Active";
         LastSyncTimeText = DateTimeOffset.Now.ToString("HH:mm:ss");
-        DeviceCountText = $"{_session.Payload.LockboxRegistry.Count(r => r.Kind == "device")} devices";
+        int deviceCount = _session.Payload.LockboxRegistry.Count(r => r.Kind == "device");
+        DeviceCountText = deviceCount == 1 ? "1 device" : $"{deviceCount} devices";
     }
 
     public void UpdateEntries()
@@ -413,7 +414,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         TagFilters.Clear();
         foreach (var kvp in tagCounts.OrderByDescending(k => k.Value).ThenBy(k => k.Key))
         {
-            TagFilters.Add(new TagFilterItemViewModel(kvp.Key, kvp.Value));
+            TagFilters.Add(new TagFilterItemViewModel(kvp.Key, kvp.Value,
+                string.Equals(SelectedFilter, $"tag:{kvp.Key}", StringComparison.OrdinalIgnoreCase)));
         }
 
         // Update provider filters with counts
@@ -423,7 +425,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         ProviderFilters.Clear();
         foreach (var group in providerGroups)
         {
-            ProviderFilters.Add(new ProviderFilterItemViewModel(group.Key, group.Count()));
+            ProviderFilters.Add(new ProviderFilterItemViewModel(group.Key, group.Count(),
+                string.Equals(SelectedFilter, group.Key, StringComparison.OrdinalIgnoreCase)));
         }
 
         // Filter by search & selected category
@@ -491,6 +494,39 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         {
             SelectedEntry = FilteredEntries.FirstOrDefault();
         }
+
+        OnPropertyChanged(nameof(IsAllFilterActive));
+        OnPropertyChanged(nameof(IsAttentionFilterActive));
+        OnPropertyChanged(nameof(FilterTitle));
+        OnPropertyChanged(nameof(FilteredCountText));
+        OnPropertyChanged(nameof(HasNoKeys));
+        OnPropertyChanged(nameof(HasNoMatchingEntries));
+    }
+
+    public bool IsAllFilterActive => SelectedFilter == "all";
+    public bool IsAttentionFilterActive => SelectedFilter == "attention";
+
+    public string FilterTitle => SelectedFilter switch
+    {
+        "all" => "All Keys",
+        "attention" => "Needs Attention",
+        "revoked" => "Revoked",
+        "production" => "Production",
+        "development" => "Development",
+        _ when SelectedFilter.StartsWith("tag:") => "#" + SelectedFilter["tag:".Length..],
+        _ => ProviderVisuals.GetDisplayName(SelectedFilter)
+    };
+
+    public string FilteredCountText => FilteredEntries.Count == 1 ? "1 key" : $"{FilteredEntries.Count} keys";
+
+    public bool HasNoKeys => TotalKeysCount == 0;
+    public bool HasNoMatchingEntries => TotalKeysCount > 0 && FilteredEntries.Count == 0;
+
+    [RelayCommand]
+    private void ClearFilters()
+    {
+        SearchText = string.Empty;
+        SelectedFilter = "all";
     }
 
     partial void OnSearchTextChanged(string value) => UpdateEntries();
@@ -730,7 +766,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void StartClipboardCountdown(int seconds)
     {
         _clipboardRemainingSeconds = seconds;
-        ClipboardCountdownText = $"📋 Copied · clears in {_clipboardRemainingSeconds}s";
+        ClipboardCountdownText = $"Copied · clipboard clears in {_clipboardRemainingSeconds}s";
 
         _clipboardTimer?.Stop();
         _clipboardTimer = new DispatcherTimer
@@ -748,7 +784,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             }
             else
             {
-                ClipboardCountdownText = $"📋 Copied · clears in {_clipboardRemainingSeconds}s";
+                ClipboardCountdownText = $"Copied · clipboard clears in {_clipboardRemainingSeconds}s";
             }
         };
         _clipboardTimer.Start();
