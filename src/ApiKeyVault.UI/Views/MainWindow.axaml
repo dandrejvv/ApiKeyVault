@@ -5,7 +5,7 @@
         x:DataType="vm:MainWindowViewModel"
         Title="ApiKeyVault"
         Width="1080" Height="700"
-        MinWidth="850" MinHeight="550"
+        MinWidth="880" MinHeight="550"
         Background="{StaticResource SurfaceLowestBrush}"
         WindowStartupLocation="CenterScreen">
 
@@ -199,8 +199,8 @@
         <!-- 3. UNLOCKED MAIN WORKSPACE (Obsidian Vault v2)           -->
         <!-- ======================================================== -->
         <Grid IsVisible="{Binding IsUnlocked}" RowDefinitions="*, Auto">
-            <!-- 3-Column Layout: Sidebar (Full Height) | Key List Table | Inspector Panel -->
-            <Grid Grid.Row="0" ColumnDefinitions="240, *, 390">
+            <!-- 3-Column Layout: Sidebar (Full Height) | Key List Table | Collapsible Inspector Panel -->
+            <Grid Grid.Row="0" ColumnDefinitions="190, *, Auto">
                 <!-- ==================== COLUMN 0: SIDEBAR ==================== -->
                 <Border Grid.Column="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0" Padding="14,16">
                     <Grid RowDefinitions="Auto, Auto, Auto, *, Auto">
@@ -339,13 +339,21 @@
                 <Border Grid.Column="1" Background="{StaticResource SurfaceBaseBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,1,0">
                     <Grid RowDefinitions="Auto, *">
                         <!-- Table Column Headers -->
-                        <Border Grid.Row="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="16,10">
-                            <Grid ColumnDefinitions="*, 100, 110, 165, 115">
-                                <TextBlock Grid.Column="0" Text="Key Name" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                <TextBlock Grid.Column="1" Text="Platform" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                <TextBlock Grid.Column="2" Text="Status" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                <TextBlock Grid.Column="3" Text="Tags" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                <TextBlock Grid.Column="4" Text="Expires" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Right" Margin="0,0,4,0" />
+                        <Border Grid.Row="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="12,8">
+                            <Grid ColumnDefinitions="*, Auto">
+                                <Grid Grid.Column="0" ColumnDefinitions="*, 72, 68, 70, 52">
+                                    <TextBlock Grid.Column="0" Text="Key Name" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="Platform" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="Status" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Text="Tags" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="4" Text="Expires" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0" />
+                                </Grid>
+                                <!-- Toggle Details Panel Button -->
+                                <Button Grid.Column="1" Command="{Binding ToggleInspectorCommand}"
+                                        Classes="subtle" Padding="6,3" Margin="6,0,0,0"
+                                        ToolTip.Tip="Toggle details panel">
+                                    <TextBlock Text="◧" FontSize="12" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                </Button>
                             </Grid>
                         </Border>
 
@@ -353,41 +361,42 @@
                         <ListBox Grid.Row="1" ItemsSource="{Binding FilteredEntries}"
                                  SelectedItem="{Binding SelectedEntry}"
                                  Background="Transparent"
+                                 Tapped="OnEntryListTapped"
                                  AutomationProperties.AutomationId="Entry.List">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="vm:EntryItemViewModel">
-                                    <Grid ColumnDefinitions="*, 100, 110, 165, 115" Margin="2,6">
+                                    <Grid ColumnDefinitions="*, 72, 68, 70, 52" Margin="2,6" ClipToBounds="True">
                                         <!-- Key Name & Subtitle -->
-                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,8,0" ClipToBounds="True">
                                             <TextBlock Text="{Binding Address}" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Text="{Binding Comment}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
 
                                         <!-- Platform Badge -->
-                                        <Border Grid.Column="1" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                            <TextBlock Text="{Binding ProviderDisplayName}" FontSize="10" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceBrush}" />
+                                        <Border Grid.Column="1" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="5" Padding="5,2" VerticalAlignment="Center" HorizontalAlignment="Left" ClipToBounds="True">
+                                            <TextBlock Text="{Binding ProviderDisplayName}" FontSize="10" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceBrush}" TextTrimming="CharacterEllipsis" />
                                         </Border>
 
                                         <!-- Status Dot + Text -->
-                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding StatusIcon}" Foreground="{Binding StatusColor}" FontSize="10" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" ClipToBounds="True">
+                                            <TextBlock Text="{Binding StatusIcon}" Foreground="{Binding StatusColor}" FontSize="9" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
 
                                         <!-- Detected Tags Badges -->
-                                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,6,0">
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" VerticalAlignment="Center" Margin="0,0,4,0" ClipToBounds="True">
                                             <ItemsControl ItemsSource="{Binding VisibleTagBadges}">
                                                 <ItemsControl.ItemsPanel>
                                                     <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Horizontal" Spacing="4" />
+                                                        <StackPanel Orientation="Horizontal" Spacing="3" />
                                                     </ItemsPanelTemplate>
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate DataType="vm:TagBadgeViewModel">
                                                         <Border Background="{Binding BackgroundColor}" BorderBrush="{Binding BorderColor}"
-                                                                BorderThickness="1" CornerRadius="5" Padding="5,2" VerticalAlignment="Center"
+                                                                BorderThickness="1" CornerRadius="4" Padding="4,1" VerticalAlignment="Center"
                                                                 ToolTip.Tip="{Binding Tooltip}">
-                                                            <TextBlock Text="{Binding DisplayText}" FontSize="10" FontWeight="SemiBold"
+                                                            <TextBlock Text="{Binding DisplayText}" FontSize="9" FontWeight="SemiBold"
                                                                        Foreground="{Binding ForegroundColor}" VerticalAlignment="Center" />
                                                         </Border>
                                                     </DataTemplate>
@@ -397,20 +406,20 @@
                                             <!-- Overflow Tag Pill (+N) -->
                                             <Border IsVisible="{Binding HasOverflowTags}"
                                                     Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}"
-                                                    BorderThickness="1" CornerRadius="5" Padding="4,2" VerticalAlignment="Center"
+                                                    BorderThickness="1" CornerRadius="4" Padding="3,1" VerticalAlignment="Center"
                                                     ToolTip.Tip="{Binding TagsDisplay}">
-                                                <TextBlock Text="{Binding OverflowTagText}" FontSize="9" FontWeight="Bold"
+                                                <TextBlock Text="{Binding OverflowTagText}" FontSize="8" FontWeight="Bold"
                                                            Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
                                             </Border>
 
                                             <!-- Subtle dash when no tags exist -->
                                             <TextBlock IsVisible="{Binding HasNoTags}" Text="—"
-                                                       Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="12" Opacity="0.4"
-                                                       VerticalAlignment="Center" Margin="4,0,0,0" />
+                                                       Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="11" Opacity="0.4"
+                                                       VerticalAlignment="Center" Margin="2,0,0,0" />
                                         </StackPanel>
 
                                         <!-- Expiry Description -->
-                                        <TextBlock Grid.Column="4" Text="{Binding ExpiryDescription}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="4" Text="{Binding ExpiryTableDescription}" ToolTip.Tip="{Binding ExpiryDescription}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="10" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0" TextTrimming="CharacterEllipsis" />
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -418,14 +427,15 @@
                     </Grid>
                 </Border>
 
-                <!-- ==================== COLUMN 2: RIGHT INSPECTOR PANEL ==================== -->
-                <Border Grid.Column="2" Background="{StaticResource SurfaceLowestBrush}" Padding="14" AutomationProperties.AutomationId="Detail.Pane">
+                <!-- ==================== COLUMN 2: RIGHT INSPECTOR PANEL (COLLAPSIBLE) ==================== -->
+                <Border Grid.Column="2" Width="300" IsVisible="{Binding IsInspectorVisible}"
+                        Background="{StaticResource SurfaceLowestBrush}" Padding="12" AutomationProperties.AutomationId="Detail.Pane">
                     <Grid>
                         <!-- Empty State Canvas (when 0 entries exist) -->
                         <Border IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNull}}"
                                 Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="28" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <StackPanel Spacing="16" HorizontalAlignment="Center" MaxWidth="320">
-                                <Border Width="56" Height="56" CornerRadius="28" Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" HorizontalAlignment="Center">
+                            <StackPanel Spacing="16" HorizontalAlignment="Center" MaxWidth="300">
+                                <Border Width="56" Height="56" CornerRadius="28" Background="{StaticResource PrimaryBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" HorizontalAlignment="Center">
                                     <TextBlock Text="🔑" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <TextBlock Text="No Keys Selected" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" />
@@ -444,14 +454,25 @@
 
                         <!-- Key Selected Inspector Card -->
                         <Border IsVisible="{Binding SelectedEntry, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <StackPanel Spacing="14">
-                                    <!-- Header: Status Icon + Title -->
-                                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
-                                        <TextBlock Text="{Binding SelectedEntry.StatusIcon}" FontSize="14" Foreground="{Binding SelectedEntry.StatusColor}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding SelectedEntry.Address}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    </StackPanel>
+                                Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="16">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" AllowAutoHide="True">
+                                <StackPanel Spacing="11">
+                                    <!-- Header: Title + Status Icon + Close Button -->
+                                    <Grid ColumnDefinitions="*, Auto" Margin="0,0,0,2">
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding SelectedEntry.StatusIcon}" FontSize="14" Foreground="{Binding SelectedEntry.StatusColor}" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding SelectedEntry.Address}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Command="{Binding CloseInspectorCommand}"
+                                                Classes="subtle" Padding="6,2" VerticalAlignment="Center"
+                                                ToolTip.Tip="Close details panel">
+                                            <TextBlock Text="✕" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- Description Subtitle (if available) -->
+                                    <TextBlock Text="{Binding SelectedEntry.Comment}" FontSize="12" Foreground="{StaticResource OnSurfaceMutedBrush}"
+                                               TextWrapping="Wrap" IsVisible="{Binding SelectedEntry.HasComment}" Margin="0,-4,0,2" />
 
                                     <!-- Compromised Alert Banner -->
                                     <Border IsVisible="{Binding SelectedEntry.IsCompromised}"
@@ -465,6 +486,18 @@
                                         </StackPanel>
                                     </Border>
 
+                                    <!-- Expiring Alert Banner -->
+                                    <Border IsVisible="{Binding SelectedEntry.IsExpiringSoon}"
+                                            Background="#2c1a06" BorderBrush="{StaticResource StatusWarningBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Text="▲" FontSize="13" Foreground="{StaticResource StatusWarningBrush}" VerticalAlignment="Center" />
+                                            <StackPanel Spacing="1">
+                                                <TextBlock Text="Key expires soon!" FontWeight="Bold" FontSize="11" Foreground="{StaticResource StatusWarningBrush}" />
+                                                <TextBlock Text="{Binding SelectedEntry.ExpiryDescription}" FontSize="10" Foreground="#fde68a" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
                                     <!-- Revoked Alert Banner -->
                                     <Border IsVisible="{Binding SelectedEntry.IsRevoked}"
                                             Background="#1e293b" BorderBrush="#64748b" BorderThickness="1" CornerRadius="8" Padding="12,8">
@@ -473,18 +506,6 @@
                                             <TextBlock Text="This key has been revoked and is inactive." FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Border>
-
-                                    <!-- Key ID Field -->
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Key ID" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                        <TextBox Text="{Binding SelectedEntry.Address}" IsReadOnly="True" Height="34" FontFamily="Consolas, monospace" FontSize="12" />
-                                    </StackPanel>
-
-                                    <!-- Description Field -->
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Description" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                        <TextBox Text="{Binding SelectedEntry.Comment}" IsReadOnly="True" Height="34" FontSize="12" />
-                                    </StackPanel>
 
                                     <!-- Secret Field with Monospace & Reveal -->
                                     <StackPanel Spacing="4">
@@ -499,7 +520,7 @@
                                         </Grid>
                                         <!-- Big Emerald Copy Key Button -->
                                         <Button Content="Copy Key" Command="{Binding CopySecretCommand}"
-                                                Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="38" Margin="0,6,0,0"
+                                                Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="38" Margin="0,4,0,0"
                                                 AutomationProperties.AutomationId="Entry.Copy" FontWeight="SemiBold" FontSize="13" />
                                         <TextBlock Text="Copied!" FontSize="11" Foreground="{StaticResource PrimaryBrush}" HorizontalAlignment="Center"
                                                    IsVisible="{Binding ClipboardCountdownText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -678,8 +699,9 @@
                         </StackPanel>
                     </StackPanel>
 
-                    <!-- Security Status Checkboxes -->
-                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10">
+                    <!-- Security Status Checkboxes (Only visible when editing an existing key!) -->
+                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10"
+                            IsVisible="{Binding KeyDialogIsEditing}">
                         <StackPanel Spacing="8">
                             <CheckBox IsChecked="{Binding KeyDialogIsCompromised}"
                                       Content="Flag as Compromised (secret was exposed or leaked)"

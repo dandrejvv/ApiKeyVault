@@ -19,6 +19,9 @@ public sealed partial class EntryItemViewModel : ObservableObject
     public string? Comment => Entry.Comment;
     public string? Source => Entry.Source;
     public DateTimeOffset Created => Entry.Created;
+    public bool HasComment => !string.IsNullOrWhiteSpace(Comment);
+    public bool IsExpiringSoon => Status == KeyStatus.Due;
+    public bool IsExpired => Status == KeyStatus.Expired;
 
     public bool IsCompromised => Entry.IsCompromised;
     public bool IsRevoked => Entry.IsRevoked;
@@ -64,6 +67,25 @@ public sealed partial class EntryItemViewModel : ObservableObject
                 return days >= 0 ? $"review in {days} days" : $"review due";
             }
             return "No expiry set";
+        }
+    }
+
+    public string ExpiryTableDescription
+    {
+        get
+        {
+            var now = DateTimeOffset.UtcNow;
+            if (Entry.Expires.HasValue)
+            {
+                int days = (int)Math.Ceiling((Entry.Expires.Value - now).TotalDays);
+                return days >= 0 ? $"{days}d" : $"{Math.Abs(days)}d ago";
+            }
+            if (Entry.ReviewBy.HasValue)
+            {
+                int days = (int)Math.Ceiling((Entry.ReviewBy.Value - now).TotalDays);
+                return days >= 0 ? $"rev {days}d" : "rev due";
+            }
+            return "—";
         }
     }
 
@@ -123,15 +145,40 @@ public sealed partial class EntryItemViewModel : ObservableObject
                                 .Select(s => s.Trim().ToLowerInvariant())
                                 .ToList();
 
-            if (slices.Count >= 2)
+            if (slices.Count >= 3)
             {
-                // Everything after the provider (index 0) is a potential scope/tag slice
-                for (int i = 1; i < slices.Count; i++)
+                // In multi-slice paths (e.g. provider/env/team/name):
+                // Intermediate slices [1..^1] are hierarchical scope tags
+                for (int i = 1; i < slices.Count - 1; i++)
                 {
                     string slice = slices[i];
                     if (!string.IsNullOrEmpty(slice) && slice.Any(char.IsLetter) && !list.Contains(slice))
                     {
                         list.Add(slice);
+                    }
+                }
+
+                // If the last slice is also a recognized category keyword (e.g. 'intent', 'personal'), include it
+                string lastName = slices[^1];
+                if (IsCategoryKeyword(lastName) && !list.Contains(lastName))
+                {
+                    list.Add(lastName);
+                }
+            }
+            else if (slices.Count == 2)
+            {
+                // In standard 2-slice provider/name:
+                // Only extract recognized category keywords or prefixes (e.g. 'prod', 'live', 'beta', 'dev', 'intent', 'personal')
+                string name = slices[1];
+                foreach (var kw in KnownCategoryKeywords)
+                {
+                    if (name.Equals(kw, StringComparison.OrdinalIgnoreCase) ||
+                        name.StartsWith(kw + "-", StringComparison.OrdinalIgnoreCase) ||
+                        name.StartsWith(kw + "_", StringComparison.OrdinalIgnoreCase) ||
+                        name.EndsWith("-" + kw, StringComparison.OrdinalIgnoreCase) ||
+                        name.EndsWith("_" + kw, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!list.Contains(kw)) list.Add(kw);
                     }
                 }
             }
@@ -237,4 +284,14 @@ public sealed partial class EntryItemViewModel : ObservableObject
     {
         Entry = entry;
     }
+
+    private static readonly string[] KnownCategoryKeywords =
+    [
+        "intent", "personal", "prod", "production", "dev", "development",
+        "staging", "stag", "test", "testing", "live", "beta", "git",
+        "embeddings", "ai", "qa", "sandbox", "demo", "admin"
+    ];
+
+    private static bool IsCategoryKeyword(string value) =>
+        KnownCategoryKeywords.Any(k => string.Equals(k, value, StringComparison.OrdinalIgnoreCase));
 }

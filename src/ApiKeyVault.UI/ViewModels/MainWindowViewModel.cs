@@ -102,6 +102,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private EntryItemViewModel? _selectedEntry;
 
     [ObservableProperty]
+    private bool _isInspectorVisible = true;
+
+    [RelayCommand]
+    private void ToggleInspector() => IsInspectorVisible = !IsInspectorVisible;
+
+    [RelayCommand]
+    private void CloseInspector() => IsInspectorVisible = false;
+
+    [RelayCommand]
+    private void OpenInspector() => IsInspectorVisible = true;
+
+    [ObservableProperty]
     private bool _isSecretRevealed;
 
     [ObservableProperty]
@@ -488,6 +500,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         IsSecretRevealed = false;
         RevealedSecret = "••••••••••••••••";
+        if (value != null)
+        {
+            IsInspectorVisible = true;
+        }
     }
 
     [RelayCommand]
