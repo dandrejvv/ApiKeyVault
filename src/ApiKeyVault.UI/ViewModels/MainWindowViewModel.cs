@@ -135,6 +135,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private string _selectedFilter = "all";
 
     public ObservableCollection<EntryItemViewModel> FilteredEntries { get; } = [];
+    public ObservableCollection<TagFilterItemViewModel> TagFilters { get; } = [];
     public ObservableCollection<ProviderFilterItemViewModel> ProviderFilters { get; } = [];
 
     // Add / Edit Key Modal Dialog
@@ -158,6 +159,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _keyDialogComment = string.Empty;
+
+    [ObservableProperty]
+    private string _keyDialogTags = string.Empty;
+
+    [ObservableProperty]
+    private bool _keyDialogIsCompromised;
+
+    [ObservableProperty]
+    private bool _keyDialogIsRevoked;
 
     [ObservableProperty]
     private DateTime? _keyDialogExpiresDate;
@@ -361,20 +371,38 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         AttentionCount = entries.Count(e =>
         {
             var status = EntryStatusCalculator.Compute(e, now);
-            return status != KeyStatus.Ok;
+            return status != KeyStatus.Ok && status != KeyStatus.Revoked;
         });
 
         ProductionCount = entries.Count(e =>
+            new EntryItemViewModel(e).Tags.Contains("prod", StringComparer.OrdinalIgnoreCase) ||
             e.Name.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
             e.Name.Contains("live", StringComparison.OrdinalIgnoreCase) ||
             e.Provider.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
             (e.Comment != null && (e.Comment.Contains("prod", StringComparison.OrdinalIgnoreCase) || e.Comment.Contains("live", StringComparison.OrdinalIgnoreCase))));
 
         DevelopmentCount = entries.Count(e =>
+            new EntryItemViewModel(e).Tags.Contains("dev", StringComparer.OrdinalIgnoreCase) ||
             e.Name.Contains("dev", StringComparison.OrdinalIgnoreCase) ||
             e.Name.Contains("test", StringComparison.OrdinalIgnoreCase) ||
             e.Name.Contains("stage", StringComparison.OrdinalIgnoreCase) ||
             (e.Comment != null && (e.Comment.Contains("dev", StringComparison.OrdinalIgnoreCase) || e.Comment.Contains("test", StringComparison.OrdinalIgnoreCase))));
+
+        // Update tag filters with counts
+        var tagCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in entries)
+        {
+            var itemVm = new EntryItemViewModel(entry);
+            foreach (var tag in itemVm.Tags)
+            {
+                tagCounts[tag] = tagCounts.GetValueOrDefault(tag, 0) + 1;
+            }
+        }
+        TagFilters.Clear();
+        foreach (var kvp in tagCounts.OrderByDescending(k => k.Value).ThenBy(k => k.Key))
+        {
+            TagFilters.Add(new TagFilterItemViewModel(kvp.Key, kvp.Value));
+        }
 
         // Update provider filters with counts
         var providerGroups = entries.GroupBy(e => e.Provider, StringComparer.OrdinalIgnoreCase)
@@ -392,11 +420,20 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         if (SelectedFilter == "attention")
         {
-            filtered = filtered.Where(e => EntryStatusCalculator.Compute(e, now) != KeyStatus.Ok);
+            filtered = filtered.Where(e =>
+            {
+                var status = EntryStatusCalculator.Compute(e, now);
+                return status != KeyStatus.Ok && status != KeyStatus.Revoked;
+            });
+        }
+        else if (SelectedFilter == "revoked")
+        {
+            filtered = filtered.Where(e => e.IsRevoked);
         }
         else if (SelectedFilter == "production")
         {
             filtered = filtered.Where(e =>
+                new EntryItemViewModel(e).Tags.Contains("prod", StringComparer.OrdinalIgnoreCase) ||
                 e.Name.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
                 e.Name.Contains("live", StringComparison.OrdinalIgnoreCase) ||
                 e.Provider.Contains("prod", StringComparison.OrdinalIgnoreCase) ||
@@ -405,14 +442,22 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         else if (SelectedFilter == "development")
         {
             filtered = filtered.Where(e =>
+                new EntryItemViewModel(e).Tags.Contains("dev", StringComparer.OrdinalIgnoreCase) ||
                 e.Name.Contains("dev", StringComparison.OrdinalIgnoreCase) ||
                 e.Name.Contains("test", StringComparison.OrdinalIgnoreCase) ||
                 e.Name.Contains("stage", StringComparison.OrdinalIgnoreCase) ||
                 (e.Comment != null && (e.Comment.Contains("dev", StringComparison.OrdinalIgnoreCase) || e.Comment.Contains("test", StringComparison.OrdinalIgnoreCase))));
         }
+        else if (SelectedFilter.StartsWith("tag:"))
+        {
+            var targetTag = SelectedFilter["tag:".Length..].Trim();
+            filtered = filtered.Where(e => new EntryItemViewModel(e).Tags.Contains(targetTag, StringComparer.OrdinalIgnoreCase));
+        }
         else if (SelectedFilter != "all")
         {
-            filtered = filtered.Where(e => string.Equals(e.Provider, SelectedFilter, StringComparison.OrdinalIgnoreCase));
+            filtered = filtered.Where(e =>
+                string.Equals(e.Provider, SelectedFilter, StringComparison.OrdinalIgnoreCase) ||
+                new EntryItemViewModel(e).Tags.Contains(SelectedFilter, StringComparer.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(query))
@@ -420,7 +465,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             filtered = filtered.Where(e =>
                 e.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 e.Provider.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                (e.Comment != null && e.Comment.Contains(query, StringComparison.OrdinalIgnoreCase)));
+                (e.Comment != null && e.Comment.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
+                new EntryItemViewModel(e).Tags.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase)));
         }
 
         FilteredEntries.Clear();
@@ -756,13 +802,37 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void ToggleSelectedEntryCompromised()
+    {
+        if (SelectedEntry == null || _session == null) return;
+        bool nextVal = !SelectedEntry.Entry.IsCompromised;
+        _session.SetEntryCompromised(SelectedEntry.Address, nextVal);
+        string currentId = SelectedEntry.Id;
+        UpdateEntries();
+        SelectedEntry = FilteredEntries.FirstOrDefault(e => e.Id == currentId);
+        SyncStatusText = nextVal ? $"Marked {SelectedEntry?.Address} as compromised" : $"Cleared compromised status for {SelectedEntry?.Address}";
+    }
+
+    [RelayCommand]
+    private void ToggleSelectedEntryRevoked()
+    {
+        if (SelectedEntry == null || _session == null) return;
+        bool nextVal = !SelectedEntry.Entry.IsRevoked;
+        _session.SetEntryRevoked(SelectedEntry.Address, nextVal);
+        string currentId = SelectedEntry.Id;
+        UpdateEntries();
+        SelectedEntry = FilteredEntries.FirstOrDefault(e => e.Id == currentId);
+        SyncStatusText = nextVal ? $"Revoked key {SelectedEntry?.Address}" : $"Restored key {SelectedEntry?.Address}";
+    }
+
+    [RelayCommand]
     private void DeleteSelectedEntry()
     {
         if (SelectedEntry == null || _session == null) return;
         string address = SelectedEntry.Address;
         _session.DeleteEntry(address);
         UpdateEntries();
-        SyncStatusText = $"Deleted key {address}";
+        SyncStatusText = $"Permanently deleted key {address}";
     }
 
     [RelayCommand]
@@ -853,6 +923,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         KeyDialogAddress = string.Empty;
         KeyDialogSecret = string.Empty;
         KeyDialogComment = string.Empty;
+        KeyDialogTags = string.Empty;
+        KeyDialogIsCompromised = false;
+        KeyDialogIsRevoked = false;
         KeyDialogExpiresDate = null;
         KeyDialogErrorMessage = null;
         IsAddKeyDialogOpen = true;
@@ -868,6 +941,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         KeyDialogAddress = SelectedEntry.Address;
         KeyDialogSecret = SelectedEntry.Entry.Secret;
         KeyDialogComment = SelectedEntry.Comment ?? string.Empty;
+        KeyDialogTags = string.Join(", ", SelectedEntry.Tags.Select(t => $"#{t}"));
+        KeyDialogIsCompromised = SelectedEntry.Entry.IsCompromised;
+        KeyDialogIsRevoked = SelectedEntry.Entry.IsRevoked;
 
         if (SelectedEntry.Entry.Expires.HasValue)
         {
@@ -932,9 +1008,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         string name;
         if (address.Contains('/'))
         {
-            var parts = address.Split('/', 2, StringSplitOptions.RemoveEmptyEntries);
+            var parts = address.Split('/', StringSplitOptions.RemoveEmptyEntries);
             provider = parts[0];
-            name = parts.Length > 1 ? parts[1] : "default";
+            name = parts.Length > 1 ? string.Join('/', parts.Skip(1)) : "default";
         }
         else
         {
@@ -946,6 +1022,31 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             ? new DateTimeOffset(KeyDialogExpiresDate.Value.Date.AddDays(1).AddSeconds(-1), DateTimeOffset.Now.Offset)
             : null;
 
+        var parsedTags = KeyDialogTags
+            .Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries)
+            .Select(t => t.Trim().TrimStart('#').ToLowerInvariant())
+            .Where(t => !string.IsNullOrEmpty(t))
+            .Distinct()
+            .ToList();
+
+        // If no explicit tags provided, infer tags from address slices
+        if (parsedTags.Count == 0 && address.Contains('/'))
+        {
+            var slices = address.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                                .Select(s => s.Trim().ToLowerInvariant())
+                                .ToList();
+            if (slices.Count >= 2)
+            {
+                for (int i = 1; i < slices.Count; i++)
+                {
+                    if (!parsedTags.Contains(slices[i]))
+                    {
+                        parsedTags.Add(slices[i]);
+                    }
+                }
+            }
+        }
+
         try
         {
             if (KeyDialogIsEditing && !string.IsNullOrEmpty(KeyDialogEditingId))
@@ -955,13 +1056,19 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 {
                     existing.Expires = expires;
                     existing.ReviewBy = expires;
+                    existing.IsCompromised = KeyDialogIsCompromised;
+                    existing.IsRevoked = KeyDialogIsRevoked;
+                    existing.Tags = parsedTags;
 
                     _session.EditEntry(
                         existing.Id,
                         newName: name,
                         newComment: string.IsNullOrWhiteSpace(KeyDialogComment) ? null : KeyDialogComment.Trim(),
                         newExpires: expires,
-                        newReviewBy: expires);
+                        newReviewBy: expires,
+                        isCompromised: KeyDialogIsCompromised,
+                        isRevoked: KeyDialogIsRevoked,
+                        tags: parsedTags);
 
                     if (secret != existing.Secret)
                     {
@@ -982,7 +1089,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                     secret: secret,
                     comment: string.IsNullOrWhiteSpace(KeyDialogComment) ? null : KeyDialogComment.Trim(),
                     expires: expires,
-                    reviewBy: expires);
+                    reviewBy: expires,
+                    isCompromised: KeyDialogIsCompromised,
+                    isRevoked: KeyDialogIsRevoked,
+                    tags: parsedTags);
 
                 UpdateEntries();
                 SelectedEntry = FilteredEntries.FirstOrDefault(e => e.Id == added.Id);

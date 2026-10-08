@@ -268,29 +268,26 @@
                                     </Grid>
                                 </Button>
 
-                                <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                        Command="{Binding SetFilterCommand}" CommandParameter="production"
-                                        AutomationProperties.AutomationId="Nav.Production">
-                                    <Grid ColumnDefinitions="Auto, *, Auto">
-                                        <TextBlock Grid.Column="0" Text="💼" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" Text="Production" VerticalAlignment="Center" />
-                                        <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
-                                            <TextBlock Text="{Binding ProductionCount}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                        </Border>
-                                    </Grid>
-                                </Button>
+                                <Separator Margin="0,10" Background="{StaticResource BorderSubtleBrush}" />
+                                <TextBlock Text="TAGS" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="10" FontWeight="Bold" Margin="8,2" />
 
-                                <Button HorizontalAlignment="Stretch" Classes="subtle"
-                                        Command="{Binding SetFilterCommand}" CommandParameter="development"
-                                        AutomationProperties.AutomationId="Nav.Development">
-                                    <Grid ColumnDefinitions="Auto, *, Auto">
-                                        <TextBlock Grid.Column="0" Text="💻" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" Text="Development" VerticalAlignment="Center" />
-                                        <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
-                                            <TextBlock Text="{Binding DevelopmentCount}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                        </Border>
-                                    </Grid>
-                                </Button>
+                                <ItemsControl ItemsSource="{Binding TagFilters}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="vm:TagFilterItemViewModel">
+                                            <Button HorizontalAlignment="Stretch" Classes="subtle"
+                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).SetFilterCommand}"
+                                                    CommandParameter="{Binding Tag, StringFormat='tag:{0}'}">
+                                                <Grid ColumnDefinitions="Auto, *, Auto">
+                                                    <TextBlock Grid.Column="0" Text="#" FontSize="11" FontWeight="Bold" Foreground="{Binding Color}" Margin="2,0,8,0" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding Tag}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="2" Background="{StaticResource SurfaceContainerHighBrush}" CornerRadius="6" Padding="6,2">
+                                                        <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                                    </Border>
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
                                 <Separator Margin="0,10" Background="{StaticResource BorderSubtleBrush}" />
                                 <TextBlock Text="PLATFORMS" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="10" FontWeight="Bold" Margin="8,2" />
@@ -343,12 +340,12 @@
                     <Grid RowDefinitions="Auto, *">
                         <!-- Table Column Headers -->
                         <Border Grid.Row="0" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,0,0,1" Padding="16,10">
-                            <Grid ColumnDefinitions="*, 90, 80, 80, 70">
+                            <Grid ColumnDefinitions="*, 100, 110, 165, 115">
                                 <TextBlock Grid.Column="0" Text="Key Name" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
                                 <TextBlock Grid.Column="1" Text="Platform" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
                                 <TextBlock Grid.Column="2" Text="Status" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                <TextBlock Grid.Column="3" Text="Environment" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                <TextBlock Grid.Column="4" Text="Expires" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Column="3" Text="Tags" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                                <TextBlock Grid.Column="4" Text="Expires" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Right" Margin="0,0,4,0" />
                             </Grid>
                         </Border>
 
@@ -359,31 +356,61 @@
                                  AutomationProperties.AutomationId="Entry.List">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="vm:EntryItemViewModel">
-                                    <Grid ColumnDefinitions="*, 90, 80, 80, 70" Margin="2,4">
+                                    <Grid ColumnDefinitions="*, 100, 110, 165, 115" Margin="2,6">
                                         <!-- Key Name & Subtitle -->
-                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,10,0">
                                             <TextBlock Text="{Binding Address}" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" FontSize="13" TextTrimming="CharacterEllipsis" />
                                             <TextBlock Text="{Binding Comment}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />
                                         </StackPanel>
 
                                         <!-- Platform Badge -->
-                                        <Border Grid.Column="1" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="6,2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                        <Border Grid.Column="1" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="8,3" VerticalAlignment="Center" HorizontalAlignment="Left">
                                             <TextBlock Text="{Binding ProviderDisplayName}" FontSize="10" FontFamily="Consolas, monospace" Foreground="{StaticResource OnSurfaceBrush}" />
                                         </Border>
 
                                         <!-- Status Dot + Text -->
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding StatusIcon}" Foreground="{Binding StatusColor}" FontSize="10" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontSize="11" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusColor}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
                                         </StackPanel>
 
-                                        <!-- Environment Pill -->
-                                        <Border Grid.Column="3" Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="6" Padding="6,2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                            <TextBlock Text="{Binding EnvironmentTag}" FontSize="10" FontWeight="Bold" Foreground="{Binding EnvironmentTagColor}" />
-                                        </Border>
+                                        <!-- Detected Tags Badges -->
+                                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,6,0">
+                                            <ItemsControl ItemsSource="{Binding VisibleTagBadges}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" Spacing="4" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="vm:TagBadgeViewModel">
+                                                        <Border Background="{Binding BackgroundColor}" BorderBrush="{Binding BorderColor}"
+                                                                BorderThickness="1" CornerRadius="5" Padding="5,2" VerticalAlignment="Center"
+                                                                ToolTip.Tip="{Binding Tooltip}">
+                                                            <TextBlock Text="{Binding DisplayText}" FontSize="10" FontWeight="SemiBold"
+                                                                       Foreground="{Binding ForegroundColor}" VerticalAlignment="Center" />
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+
+                                            <!-- Overflow Tag Pill (+N) -->
+                                            <Border IsVisible="{Binding HasOverflowTags}"
+                                                    Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}"
+                                                    BorderThickness="1" CornerRadius="5" Padding="4,2" VerticalAlignment="Center"
+                                                    ToolTip.Tip="{Binding TagsDisplay}">
+                                                <TextBlock Text="{Binding OverflowTagText}" FontSize="9" FontWeight="Bold"
+                                                           Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- Subtle dash when no tags exist -->
+                                            <TextBlock IsVisible="{Binding HasNoTags}" Text="—"
+                                                       Foreground="{StaticResource OnSurfaceDimBrush}" FontSize="12" Opacity="0.4"
+                                                       VerticalAlignment="Center" Margin="4,0,0,0" />
+                                        </StackPanel>
 
                                         <!-- Expiry Description -->
-                                        <TextBlock Grid.Column="4" Text="{Binding ExpiryDescription}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="4" Text="{Binding ExpiryDescription}" Foreground="{StaticResource OnSurfaceMutedBrush}" FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,4,0" TextTrimming="CharacterEllipsis" />
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
@@ -420,11 +447,32 @@
                                 Background="{StaticResource SurfaceContainerBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <StackPanel Spacing="14">
-                                    <!-- Header: Large Green Dot + Title -->
+                                    <!-- Header: Status Icon + Title -->
                                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
-                                        <TextBlock Text="●" FontSize="14" Foreground="{Binding SelectedEntry.StatusColor}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding SelectedEntry.StatusIcon}" FontSize="14" Foreground="{Binding SelectedEntry.StatusColor}" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding SelectedEntry.Address}" FontSize="18" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
+
+                                    <!-- Compromised Alert Banner -->
+                                    <Border IsVisible="{Binding SelectedEntry.IsCompromised}"
+                                            Background="#2a1015" BorderBrush="{StaticResource StatusDangerBrush}" BorderThickness="1" CornerRadius="8" Padding="12,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Text="⚠️" FontSize="14" VerticalAlignment="Center" />
+                                            <StackPanel Spacing="1">
+                                                <TextBlock Text="Key is marked as compromised!" FontWeight="Bold" FontSize="11" Foreground="#f87171" />
+                                                <TextBlock Text="This key may be leaked. Rotate or revoke it immediately." FontSize="10" Foreground="#fca5a5" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- Revoked Alert Banner -->
+                                    <Border IsVisible="{Binding SelectedEntry.IsRevoked}"
+                                            Background="#1e293b" BorderBrush="#64748b" BorderThickness="1" CornerRadius="8" Padding="12,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Text="⊘" FontSize="13" Foreground="#94a3b8" VerticalAlignment="Center" />
+                                            <TextBlock Text="This key has been revoked and is inactive." FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
 
                                     <!-- Key ID Field -->
                                     <StackPanel Spacing="4">
@@ -458,42 +506,84 @@
                                     </StackPanel>
 
                                     <!-- Metadata Properties -->
-                                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,4">
-                                        <Grid ColumnDefinitions="110, *" RowDefinitions="Auto, Auto, Auto">
+                                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,4">
+                                        <Grid ColumnDefinitions="95, *" RowDefinitions="Auto, Auto, Auto, Auto, Auto">
                                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Platform" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
                                             <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedEntry.ProviderDisplayName}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" />
 
-                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Environment" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
-                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedEntry.EnvironmentTag}" FontSize="11" Foreground="{Binding SelectedEntry.EnvironmentTagColor}" FontWeight="Bold" HorizontalAlignment="Right" Margin="0,3" />
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Tags" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" VerticalAlignment="Center" Margin="0,3" />
+                                            <Panel Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,2">
+                                                <ItemsControl ItemsSource="{Binding SelectedEntry.TagBadges}" IsVisible="{Binding SelectedEntry.HasTags}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Right" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="vm:TagBadgeViewModel">
+                                                            <Border Background="{Binding BackgroundColor}" BorderBrush="{Binding BorderColor}"
+                                                                    BorderThickness="1" CornerRadius="5" Padding="6,2" Margin="2,1"
+                                                                    ToolTip.Tip="{Binding Tooltip}">
+                                                                <TextBlock Text="{Binding DisplayText}" FontSize="10" FontWeight="SemiBold"
+                                                                           Foreground="{Binding ForegroundColor}" />
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock Text="No tags" IsVisible="{Binding SelectedEntry.HasNoTags}"
+                                                           FontSize="11" Foreground="{StaticResource OnSurfaceDimBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                            </Panel>
 
-                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Last Used" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
-                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedEntry.TestStatusDescription}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" />
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Status" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
+                                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedEntry.StatusText}" FontSize="11" Foreground="{Binding SelectedEntry.StatusColor}" FontWeight="Bold" HorizontalAlignment="Right" Margin="0,3" />
+
+                                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Expires" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
+                                            <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedEntry.ExpiryDescription}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" TextTrimming="CharacterEllipsis" />
+
+                                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Last Tested" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" Margin="0,3" />
+                                            <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding SelectedEntry.TestStatusDescription}" FontSize="11" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Right" Margin="0,3" TextTrimming="CharacterEllipsis" />
                                         </Grid>
                                     </Border>
 
-                                    <!-- Expiration Date Section -->
-                                    <StackPanel Spacing="4">
-                                        <TextBlock Text="Expiration Date" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                                        <CalendarDatePicker SelectedDate="{Binding KeyDialogExpiresDate}"
-                                                            Watermark="Select expiration..."
-                                                            HorizontalAlignment="Stretch" Height="34" />
-                                    </StackPanel>
+                                    <!-- Security & Compromised Checkbox Card -->
+                                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,2">
+                                        <Grid ColumnDefinitions="*, Auto">
+                                            <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                                                <TextBlock Text="Security Status" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource OnSurfaceBrush}" />
+                                                <TextBlock Text="Flag if secret is leaked, exposed, or at risk" FontSize="10" Foreground="{StaticResource OnSurfaceMutedBrush}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <CheckBox Grid.Column="1"
+                                                      IsChecked="{Binding SelectedEntry.IsCompromised, Mode=OneWay}"
+                                                      Command="{Binding ToggleSelectedEntryCompromisedCommand}"
+                                                      Content="Compromised"
+                                                      FontWeight="SemiBold"
+                                                      FontSize="11"
+                                                      Foreground="{StaticResource StatusDangerBrush}"
+                                                      VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
 
                                     <!-- Action Buttons -->
                                     <Grid ColumnDefinitions="*, *" Margin="0,8,0,0">
-                                        <Button Grid.Column="0" Content="Revoke Key" Command="{Binding DeleteSelectedEntryCommand}"
-                                                Classes="danger" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Margin="0,0,4,0"
-                                                AutomationProperties.AutomationId="Entry.Delete" />
-                                        <Button Grid.Column="1" Content="Save Changes" Command="{Binding OpenEditKeyDialogCommand}"
+                                        <Button Grid.Column="0" Content="{Binding SelectedEntry.RevokeButtonText}" Command="{Binding ToggleSelectedEntryRevokedCommand}"
+                                                Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Margin="0,0,4,0"
+                                                AutomationProperties.AutomationId="Entry.Revoke" />
+                                        <Button Grid.Column="1" Content="Edit Key" Command="{Binding OpenEditKeyDialogCommand}"
                                                 Classes="primary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Margin="4,0,0,0"
                                                 AutomationProperties.AutomationId="Entry.Edit" />
                                     </Grid>
 
                                     <!-- Secondary Utility Actions -->
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10" Margin="0,4,0,0">
-                                        <Button Content="✓ Test Key" Command="{Binding TestSelectedEntryCommand}" Classes="subtle" FontSize="11" />
-                                        <Button Content="Copy as akv run" Command="{Binding CopyAsCommandCommand}" Classes="subtle" FontSize="11" />
-                                    </StackPanel>
+                                    <Grid ColumnDefinitions="Auto, *, Auto" Margin="0,6,0,0">
+                                        <Button Grid.Column="0" Content="✓ Test Key" Command="{Binding TestSelectedEntryCommand}"
+                                                ToolTip.Tip="{Binding SelectedEntry.TestSupportTooltip}"
+                                                Classes="subtle" FontSize="11" Padding="8,4" />
+                                        <Button Grid.Column="1" Content="Copy akv run" Command="{Binding CopyAsCommandCommand}"
+                                                Classes="subtle" FontSize="11" HorizontalAlignment="Center" Padding="8,4" />
+                                        <Button Grid.Column="2" Content="🗑 Delete Key" Command="{Binding DeleteSelectedEntryCommand}"
+                                                Classes="subtle" FontSize="11" Foreground="{StaticResource StatusDangerBrush}" HorizontalAlignment="Right" Padding="8,4"
+                                                AutomationProperties.AutomationId="Entry.Delete" />
+                                    </Grid>
                                 </StackPanel>
                             </ScrollViewer>
                         </Border>
@@ -525,8 +615,8 @@
 
                     <!-- Key Address -->
                     <StackPanel Spacing="4">
-                        <TextBlock Text="KEY ADDRESS (e.g. openai/prod, stripe/live, aws/deploy)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <TextBox Text="{Binding KeyDialogAddress}" Height="36" Watermark="provider/environment/name">
+                        <TextBlock Text="KEY ADDRESS (e.g. anthropic/intent, openai/personal, stripe/live)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                        <TextBox Text="{Binding KeyDialogAddress}" Height="36" Watermark="provider/name (e.g. anthropic/intent)">
                             <TextBox.KeyBindings>
                                 <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
                                 <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
@@ -548,7 +638,18 @@
                     <!-- Comment -->
                     <StackPanel Spacing="4">
                         <TextBlock Text="COMMENT / DESCRIPTION (OPTIONAL)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
-                        <TextBox Text="{Binding KeyDialogComment}" Height="36" Watermark="Production billing key, rotated quarterly...">
+                        <TextBox Text="{Binding KeyDialogComment}" Height="36" Watermark="Production billing key, personal project...">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
+                                <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                    </StackPanel>
+
+                    <!-- Tags -->
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="TAGS (OPTIONAL, e.g. intent, personal, dev)" FontFamily="Consolas, monospace" FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                        <TextBox Text="{Binding KeyDialogTags}" Height="36" Watermark="intent, personal, dev...">
                             <TextBox.KeyBindings>
                                 <KeyBinding Gesture="Enter" Command="{Binding SaveKeyDialogCommand}" />
                                 <KeyBinding Gesture="Escape" Command="{Binding CancelKeyDialogCommand}" />
@@ -576,6 +677,18 @@
                             <Button Content="No Expiry" Command="{Binding ClearExpirationDateCommand}" Classes="subtle" FontSize="11" Padding="8,4" />
                         </StackPanel>
                     </StackPanel>
+
+                    <!-- Security Status Checkboxes -->
+                    <Border Background="{StaticResource SurfaceContainerHighBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10">
+                        <StackPanel Spacing="8">
+                            <CheckBox IsChecked="{Binding KeyDialogIsCompromised}"
+                                      Content="Flag as Compromised (secret was exposed or leaked)"
+                                      FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource StatusDangerBrush}" />
+                            <CheckBox IsChecked="{Binding KeyDialogIsRevoked}"
+                                      Content="Mark as Revoked (key decommissioned / inactive)"
+                                      FontSize="11" Foreground="{StaticResource OnSurfaceMutedBrush}" />
+                        </StackPanel>
+                    </Border>
 
                     <!-- Error Message -->
                     <TextBlock Text="{Binding KeyDialogErrorMessage}" Foreground="{StaticResource StatusDangerBrush}"

@@ -42,6 +42,23 @@ public sealed class HttpProviderTester : IProviderTester
         }
     }
 
+    private static readonly HashSet<string> SupportedProvidersSet = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "openai",
+        "anthropic",
+        "openrouter",
+        "azure-openai",
+        "gemini",
+        "clockify",
+        "github",
+        "gitlab"
+    };
+
+    public static bool IsSupported(string provider) =>
+        !string.IsNullOrWhiteSpace(provider) && SupportedProvidersSet.Contains(provider.Trim());
+
+    public static IReadOnlyList<string> SupportedProviders => SupportedProvidersSet.ToList();
+
     public async Task<TestResult> TestKeyAsync(
         string provider,
         string secret,
@@ -102,8 +119,19 @@ public sealed class HttpProviderTester : IProviderTester
                     request.Headers.Add("X-Api-Key", secret);
                     break;
 
+                case "github":
+                    request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/user");
+                    request.Headers.Add("Authorization", $"Bearer {secret}");
+                    request.Headers.Add("User-Agent", "ApiKeyVault");
+                    break;
+
+                case "gitlab":
+                    request = new HttpRequestMessage(HttpMethod.Get, "https://gitlab.com/api/v4/user");
+                    request.Headers.Add("PRIVATE-TOKEN", secret);
+                    break;
+
                 default:
-                    return new TestResult(false, true, null, "No automated test available for this provider.", sw.ElapsedMilliseconds);
+                    return new TestResult(false, true, null, $"No automated test available for '{provider}'. Supported: OpenAI, Anthropic, Gemini, OpenRouter, Azure OpenAI, Clockify, GitHub, GitLab.", sw.ElapsedMilliseconds);
             }
 
             var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);

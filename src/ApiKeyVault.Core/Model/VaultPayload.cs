@@ -113,6 +113,15 @@ public sealed class VaultEntry
 
     [JsonPropertyName("last_test")]
     public EntryTestResult? LastTest { get; set; }
+
+    [JsonPropertyName("is_compromised")]
+    public bool IsCompromised { get; set; }
+
+    [JsonPropertyName("is_revoked")]
+    public bool IsRevoked { get; set; }
+
+    [JsonPropertyName("tags")]
+    public List<string> Tags { get; set; } = [];
 }
 
 public sealed class ProfileMapping

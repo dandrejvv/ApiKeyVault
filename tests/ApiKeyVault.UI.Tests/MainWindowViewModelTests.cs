@@ -1,4 +1,5 @@
 using ApiKeyVault.Core.Cryptography;
+using ApiKeyVault.Core.Model;
 using ApiKeyVault.Core.Storage;
 using ApiKeyVault.Core.Vault;
 using ApiKeyVault.UI.ViewModels;
@@ -324,6 +325,141 @@ public class MainWindowViewModelTests : IDisposable
         vm.FirstRunPassphrase = "P@ssw0rd123456789!SafeKeyVault";
         Assert.Equal(4, vm.PassphraseStrengthScore);
         Assert.True(vm.IsStrengthBar4Active);
+    }
+
+    [Fact]
+    public void CompromisedStatus_And_Toggle_Works()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+        createResult.Session.AddEntry("anthropic", "intent-key", "sk-ant-test-123");
+        createResult.Session.Dispose();
+
+        var vm = CreateViewModel();
+        Assert.NotNull(vm.SelectedEntry);
+        Assert.False(vm.SelectedEntry.IsCompromised);
+        Assert.Equal(KeyStatus.Ok, vm.SelectedEntry.Status);
+        Assert.Equal(0, vm.AttentionCount);
+
+        // Toggle Compromised
+        vm.ToggleSelectedEntryCompromisedCommand.Execute(null);
+        Assert.True(vm.SelectedEntry.IsCompromised);
+        Assert.Equal(KeyStatus.Compromised, vm.SelectedEntry.Status);
+        Assert.Equal("compromised", vm.SelectedEntry.StatusText);
+        Assert.Equal(1, vm.AttentionCount);
+
+        // Toggle off
+        vm.ToggleSelectedEntryCompromisedCommand.Execute(null);
+        Assert.False(vm.SelectedEntry.IsCompromised);
+        Assert.Equal(KeyStatus.Ok, vm.SelectedEntry.Status);
+        Assert.Equal(0, vm.AttentionCount);
+    }
+
+    [Fact]
+    public void RevokedStatus_PreservesKey_And_DistinctFromDelete()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+        createResult.Session.AddEntry("openai", "personal-key", "sk-proj-test-456");
+        createResult.Session.Dispose();
+
+        var vm = CreateViewModel();
+        Assert.NotNull(vm.SelectedEntry);
+        Assert.False(vm.SelectedEntry.IsRevoked);
+        Assert.Equal("Revoke Key", vm.SelectedEntry.RevokeButtonText);
+
+        // Revoke key (does NOT delete)
+        vm.ToggleSelectedEntryRevokedCommand.Execute(null);
+        Assert.True(vm.SelectedEntry.IsRevoked);
+        Assert.Equal(KeyStatus.Revoked, vm.SelectedEntry.Status);
+        Assert.Equal("revoked", vm.SelectedEntry.StatusText);
+        Assert.Equal("Restore Key", vm.SelectedEntry.RevokeButtonText);
+        Assert.Equal(1, vm.TotalKeysCount); // Still preserved in vault!
+
+        // Restore key
+        vm.ToggleSelectedEntryRevokedCommand.Execute(null);
+        Assert.False(vm.SelectedEntry.IsRevoked);
+        Assert.Equal(KeyStatus.Ok, vm.SelectedEntry.Status);
+
+        // Delete permanently removes it
+        vm.DeleteSelectedEntryCommand.Execute(null);
+        Assert.Equal(0, vm.TotalKeysCount);
+        Assert.Empty(vm.FilteredEntries);
+    }
+
+    [Fact]
+    public void DynamicTags_IntentAndPersonal_And_TagFiltering()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+        createResult.Session.AddEntry("anthropic", "dev/intent", "key-1", tags: ["intent"]);
+        createResult.Session.AddEntry("gitlab", "dev/personal", "key-2", tags: ["personal"]);
+        createResult.Session.Dispose();
+
+        var vm = CreateViewModel();
+        Assert.Equal(2, vm.TotalKeysCount);
+
+        // TagFilters populated
+        Assert.Contains(vm.TagFilters, t => t.Tag == "intent" && t.Count == 1);
+        Assert.Contains(vm.TagFilters, t => t.Tag == "personal" && t.Count == 1);
+
+        // Filter by tag:intent
+        vm.SelectedFilter = "tag:intent";
+        Assert.Single(vm.FilteredEntries);
+        Assert.Equal("anthropic/dev/intent", vm.FilteredEntries[0].Address);
+
+        // Filter by tag:personal
+        vm.SelectedFilter = "tag:personal";
+        Assert.Single(vm.FilteredEntries);
+        Assert.Equal("gitlab/dev/personal", vm.FilteredEntries[0].Address);
+    }
+
+    [Fact]
+    public void AddKeyDialog_SupportsTagsAndCompromisedFlag()
+    {
+        VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+        var vm = CreateViewModel();
+
+        vm.OpenAddKeyDialogCommand.Execute(null);
+        vm.KeyDialogAddress = "openai/intent";
+        vm.KeyDialogSecret = "sk-intent-secret-777";
+        vm.KeyDialogTags = "intent, personal";
+        vm.KeyDialogIsCompromised = true;
+
+        vm.SaveKeyDialogCommand.Execute(null);
+
+        Assert.Equal(1, vm.TotalKeysCount);
+        Assert.NotNull(vm.SelectedEntry);
+        Assert.True(vm.SelectedEntry.IsCompromised);
+        Assert.Equal(KeyStatus.Compromised, vm.SelectedEntry.Status);
+        Assert.Contains("intent", vm.SelectedEntry.Tags);
+        Assert.Contains("personal", vm.SelectedEntry.Tags);
+    }
+
+    [Fact]
+    public void DetectedTags_MultiSlice_BadgesAndExcludesPureNumbers()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+        // Multi-slice: anthropic/dev/intent with comment "#2 counter"
+        createResult.Session.AddEntry("anthropic", "dev/intent", "sec-1", comment: "Testing key #2");
+        createResult.Session.Dispose();
+
+        var vm = CreateViewModel();
+        Assert.Single(vm.FilteredEntries);
+        var item = vm.FilteredEntries[0];
+
+        // Should detect 'dev' and 'intent', but NOT '2'
+        Assert.Contains("dev", item.Tags);
+        Assert.Contains("intent", item.Tags);
+        Assert.DoesNotContain("2", item.Tags);
+
+        // Badges: intent should be sorted ahead of dev
+        Assert.Equal(2, item.TagBadges.Count);
+        Assert.Equal("intent", item.TagBadges[0].Name);
+        Assert.Equal("#intent", item.TagBadges[0].DisplayText);
+        Assert.Equal("dev", item.TagBadges[1].Name);
+        Assert.Equal("#dev", item.TagBadges[1].DisplayText);
+
+        // Visible badges
+        Assert.Equal(2, item.VisibleTagBadges.Count);
+        Assert.False(item.HasOverflowTags);
     }
 
     public void Dispose()

@@ -5,13 +5,25 @@ public enum KeyStatus
     Ok,
     Due,
     Expired,
-    Failing
+    Failing,
+    Revoked,
+    Compromised
 }
 
 public static class EntryStatusCalculator
 {
     public static KeyStatus Compute(VaultEntry entry, DateTimeOffset now, int dueWindowDays = 30)
     {
+        if (entry.IsCompromised)
+        {
+            return KeyStatus.Compromised;
+        }
+
+        if (entry.IsRevoked)
+        {
+            return KeyStatus.Revoked;
+        }
+
         if (entry.LastTest != null && !entry.LastTest.Success)
         {
             return KeyStatus.Failing;

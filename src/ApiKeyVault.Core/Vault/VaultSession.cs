@@ -144,7 +144,10 @@ public sealed class VaultSession : IDisposable
         string? source = null,
         DateTimeOffset? expires = null,
         DateTimeOffset? reviewBy = null,
-        Dictionary<string, string>? extraFields = null)
+        Dictionary<string, string>? extraFields = null,
+        bool isCompromised = false,
+        bool isRevoked = false,
+        List<string>? tags = null)
     {
         string normProvider = provider.Trim().ToLowerInvariant();
         string normName = name.Trim().ToLowerInvariant();
@@ -168,6 +171,9 @@ public sealed class VaultSession : IDisposable
             Expires = expires,
             ReviewBy = reviewBy,
             ExtraFields = extraFields,
+            IsCompromised = isCompromised,
+            IsRevoked = isRevoked,
+            Tags = tags ?? [],
             Stamp = stamp,
             Secret = secret,
             SecretStamp = stamp,
@@ -188,7 +194,10 @@ public sealed class VaultSession : IDisposable
         string? newSource = null,
         DateTimeOffset? newExpires = null,
         DateTimeOffset? newReviewBy = null,
-        Dictionary<string, string>? newExtraFields = null)
+        Dictionary<string, string>? newExtraFields = null,
+        bool? isCompromised = null,
+        bool? isRevoked = null,
+        List<string>? tags = null)
     {
         var entry = FindEntry(idOrAddress, allowShortName: false)
             ?? throw new KeyNotFoundException($"Entry '{idOrAddress}' not found.");
@@ -210,7 +219,30 @@ public sealed class VaultSession : IDisposable
         if (newExpires.HasValue) entry.Expires = newExpires;
         if (newReviewBy.HasValue) entry.ReviewBy = newReviewBy;
         if (newExtraFields != null) entry.ExtraFields = newExtraFields;
+        if (isCompromised.HasValue) entry.IsCompromised = isCompromised.Value;
+        if (isRevoked.HasValue) entry.IsRevoked = isRevoked.Value;
+        if (tags != null) entry.Tags = tags;
 
+        entry.Stamp = new Stamp { Time = DateTimeOffset.UtcNow, Writer = _activeLockboxId };
+        Save();
+    }
+
+    public void SetEntryCompromised(string idOrAddress, bool isCompromised)
+    {
+        var entry = FindEntry(idOrAddress, allowShortName: false)
+            ?? throw new KeyNotFoundException($"Entry '{idOrAddress}' not found.");
+
+        entry.IsCompromised = isCompromised;
+        entry.Stamp = new Stamp { Time = DateTimeOffset.UtcNow, Writer = _activeLockboxId };
+        Save();
+    }
+
+    public void SetEntryRevoked(string idOrAddress, bool isRevoked)
+    {
+        var entry = FindEntry(idOrAddress, allowShortName: false)
+            ?? throw new KeyNotFoundException($"Entry '{idOrAddress}' not found.");
+
+        entry.IsRevoked = isRevoked;
         entry.Stamp = new Stamp { Time = DateTimeOffset.UtcNow, Writer = _activeLockboxId };
         Save();
     }
