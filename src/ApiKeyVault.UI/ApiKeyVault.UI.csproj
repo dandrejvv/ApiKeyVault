@@ -8,6 +8,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <AssemblyName>ApiKeyVault</AssemblyName>
+    <RootNamespace>ApiKeyVault.UI</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

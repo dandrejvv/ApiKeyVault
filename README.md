@@ -85,11 +85,35 @@ $ akv run -e OPENAI_API_KEY=openai/prod -- npm run start
 # Clone the repository
 git clone https://github.com/dandrejvv/ApiKeyVault.git
 cd ApiKeyVault
+```
 
+**Option A — Ready-to-run build (recommended).** `scripts/publish.ps1` builds the desktop app and CLI into `dist/`. By default the build is **portable**: one folder that runs on Windows, macOS and Linux (x64 and ARM) with the free [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0) installed:
+
+```powershell
+./scripts/publish.ps1            # → dist/portable/  (add -Zip for dist/ApiKeyVault-portable.zip)
+```
+
+| Platform | Desktop app | CLI |
+|---|---|---|
+| Windows | `ApiKeyVault.exe` | `akv.exe` |
+| macOS / Linux | `./ApiKeyVault` | `./akv` (run `chmod +x akv ApiKeyVault` once if unzipped on another OS) |
+| Anywhere | `dotnet ApiKeyVault.dll` | `dotnet akv.dll` |
+
+Copy the folder somewhere permanent (e.g. `%LOCALAPPDATA%\Programs\ApiKeyVault`), pin the app, and add the folder to your `PATH` to use `akv` from any terminal. The script needs PowerShell 7+ (`pwsh`) on macOS/Linux.
+
+Need a machine **without** .NET installed? Build self-contained single-file executables for one platform instead:
+
+```powershell
+./scripts/publish.ps1 -Runtime win-x64     # also: win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64
+```
+
+**Option B — Build from source / .NET global tool:**
+
+```bash
 # Build the entire solution
 dotnet build -c Release
 
-# (Optional) Pack and install the CLI globally
+# Pack and install the CLI as a global tool named `akv`
 dotnet pack src/ApiKeyVault.Cli -c Release -o ./nupkg
 dotnet tool install --global --add-source ./nupkg ApiKeyVault.Cli
 ```
@@ -143,6 +167,8 @@ akv get openai/prod --stdout | curl https://api.openai.com/v1/models -H "Authori
 ```
 
 ### 5. Launch the Desktop UI
+
+Run `ApiKeyVault` from your `dist/` build (see the table above), or from source:
 
 ```bash
 dotnet run --project src/ApiKeyVault.UI
