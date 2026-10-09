@@ -394,6 +394,56 @@ public class MainWindowViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task UnlockWithRecoveryCode_SetsNewPassphrase_AndEnrolsDevice()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "forgotten-pass", "OLD-PC", FastKdf, _deviceStore, _stateManager);
+        string recoveryCode = createResult.RecoveryCode;
+        createResult.Session.Dispose();
+
+        // A different machine: nothing enrolled, so the app starts on the lock screen
+        var newDeviceStore = new InMemoryDeviceKeyStore();
+        var vm = new MainWindowViewModel(newDeviceStore, _stateManager, defaultVaultPath: _vaultPath);
+        Assert.True(vm.IsLocked);
+
+        vm.SetUnlockModeCommand.Execute("recovery");
+        Assert.True(vm.IsRecoveryUnlockMode);
+
+        // Malformed code
+        vm.RecoveryUnlockCode = "not-a-code";
+        vm.RecoveryNewPassphrase = vm.RecoveryConfirmPassphrase = "brand-new-pass";
+        await vm.UnlockWithRecoveryCodeCommand.ExecuteAsync(null);
+        Assert.True(vm.IsLocked);
+        Assert.NotNull(vm.UnlockErrorMessage);
+
+        // Well-formed code for a different vault
+        vm.RecoveryUnlockCode = CrockfordBase32.GenerateRecoveryCode();
+        await vm.UnlockWithRecoveryCodeCommand.ExecuteAsync(null);
+        Assert.True(vm.IsLocked);
+        Assert.Contains("didn't open", vm.UnlockErrorMessage);
+
+        // Mismatched new passphrases
+        vm.RecoveryUnlockCode = recoveryCode.ToLowerInvariant();
+        vm.RecoveryConfirmPassphrase = "typo";
+        await vm.UnlockWithRecoveryCodeCommand.ExecuteAsync(null);
+        Assert.True(vm.IsLocked);
+
+        // Correct code + matching passphrases
+        vm.RecoveryConfirmPassphrase = "brand-new-pass";
+        await vm.UnlockWithRecoveryCodeCommand.ExecuteAsync(null);
+        Assert.True(vm.IsUnlocked);
+        Assert.False(vm.IsRecoveryUnlockMode);
+        Assert.Empty(vm.RecoveryUnlockCode);
+        vm.LockCommand.Execute(null);
+
+        using (VaultManager.OpenWithPassphrase(_vaultPath, "brand-new-pass", new InMemoryDeviceKeyStore(), _stateManager)) { }
+        Assert.ThrowsAny<Exception>(() => VaultManager.OpenWithPassphrase(_vaultPath, "forgotten-pass", new InMemoryDeviceKeyStore(), _stateManager));
+        using (var deviceSession = VaultManager.OpenWithDevice(_vaultPath, newDeviceStore, _stateManager))
+        {
+            Assert.True(deviceSession.IsDeviceEnrolled);
+        }
+    }
+
+    [Fact]
     public void CompromisedStatus_And_Toggle_Works()
     {
         var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);

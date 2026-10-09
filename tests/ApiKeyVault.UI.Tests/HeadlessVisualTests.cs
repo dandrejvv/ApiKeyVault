@@ -60,6 +60,12 @@ public class HeadlessVisualTests : IDisposable
         var lockFrame = window.CaptureRenderedFrame();
         Assert.NotNull(lockFrame);
         lockFrame.Save(Path.Combine(_artifactDir, "0b_lock_screen.png"));
+
+        vm.SetUnlockModeCommand.Execute("recovery");
+        vm.RecoveryUnlockCode = "QKPY-H08G-A8AB-9C0K-2GD7-TMY4-6WVT";
+        var recoverFrame = window.CaptureRenderedFrame();
+        Assert.NotNull(recoverFrame);
+        recoverFrame.Save(Path.Combine(_artifactDir, "0c_lock_screen_recovery.png"));
     }
 
     [AvaloniaFact]

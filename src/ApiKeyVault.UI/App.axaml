@@ -359,6 +359,51 @@
             <Setter Property="Foreground" Value="{StaticResource SecondaryBrush}" />
         </Style>
 
+        <!-- Segmented switch (e.g. unlock method) -->
+        <Style Selector="Border.segmented">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderSubtleBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="3" />
+        </Style>
+        <Style Selector="Button.segment">
+            <Setter Property="Background" Value="{StaticResource ClearSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceMutedBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.segment:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource ClearSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+        </Style>
+        <Style Selector="Button.segment.active">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighestBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.segment.active:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighestBrush}" />
+        </Style>
+
+        <!-- Icon-only toggle inside text boxes (reveal) -->
+        <Style Selector="ToggleButton.reveal">
+            <Setter Property="Background" Value="{StaticResource ClearSurfaceBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceMutedBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="7" />
+            <Setter Property="Padding" Value="7" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ToggleButton.reveal:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.reveal:checked /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource SurfaceContainerHighestBrush}" />
+            <Setter Property="Foreground" Value="{StaticResource OnSurfaceBrush}" />
+        </Style>
+
         <!-- ====================== Inputs ====================== -->
         <Style Selector="TextBox">
             <Setter Property="Background" Value="{StaticResource SurfaceContainerHighBrush}" />

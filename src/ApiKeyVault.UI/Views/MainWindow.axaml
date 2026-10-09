@@ -240,7 +240,7 @@
                                 <c:LogoMark Width="56" Height="56" />
                             </Border>
                             <TextBlock Text="Welcome back" FontSize="22" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" HorizontalAlignment="Center" Margin="0,6,0,0" />
-                            <TextBlock Text="Enter your master passphrase to unlock the vault." Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" FontSize="13" />
+                            <TextBlock Text="Unlock with your master passphrase or recovery code." Foreground="{StaticResource OnSurfaceMutedBrush}" HorizontalAlignment="Center" FontSize="13" />
                         </StackPanel>
 
                         <!-- Targeted Vault Card -->
@@ -257,8 +257,31 @@
                             </Grid>
                         </Border>
 
+                        <!-- Unlock method switch -->
+                        <Border Classes="segmented">
+                            <Grid ColumnDefinitions="*, *">
+                                <Button Grid.Column="0" Classes="segment" Classes.active="{Binding !IsRecoveryUnlockMode}"
+                                        Command="{Binding SetUnlockModeCommand}" CommandParameter="passphrase"
+                                        AutomationProperties.AutomationId="Unlock.Mode.Passphrase">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <c:Icon Data="{StaticResource Icon.Key}" Width="14" Height="14" />
+                                        <TextBlock Text="Passphrase" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Classes="segment" Classes.active="{Binding IsRecoveryUnlockMode}"
+                                        Command="{Binding SetUnlockModeCommand}" CommandParameter="recovery"
+                                        AutomationProperties.AutomationId="Unlock.Mode.Recovery">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <c:Icon Data="{StaticResource Icon.LifeBuoy}" Width="14" Height="14" />
+                                        <TextBlock Text="Recovery code" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+
                         <!-- Passphrase Field -->
                         <TextBox PasswordChar="•" Text="{Binding UnlockPassphrase}"
+                                 IsVisible="{Binding !IsRecoveryUnlockMode}"
                                  AutomationProperties.AutomationId="Unlock.Passphrase"
                                  Watermark="Master passphrase" Height="42">
                             <TextBox.InnerLeftContent>
@@ -269,6 +292,48 @@
                             </TextBox.KeyBindings>
                         </TextBox>
 
+                        <!-- Recovery Code + New Passphrase -->
+                        <StackPanel Spacing="12" IsVisible="{Binding IsRecoveryUnlockMode}" IsEnabled="{Binding !IsUnlockBusy}">
+                            <TextBlock Classes="helper" FontSize="12"
+                                       Text="Forgot your passphrase? Your recovery code opens the vault, then you choose a new master passphrase. This device is enrolled so it unlocks automatically next time." />
+                            <TextBox Classes="mono" Text="{Binding RecoveryUnlockCode}" Height="42" PasswordChar="•" RevealPassword="{Binding #RevealRecoveryCode.IsChecked}"
+                                     Watermark="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"
+                                     AutomationProperties.AutomationId="Unlock.RecoveryCode">
+                                <TextBox.InnerLeftContent>
+                                    <c:Icon Data="{StaticResource Icon.LifeBuoy}" Width="15" Height="15" Margin="12,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                </TextBox.InnerLeftContent>
+                                <TextBox.InnerRightContent>
+                                    <ToggleButton x:Name="RevealRecoveryCode" Classes="reveal" Margin="0,0,4,0" ToolTip.Tip="Show / hide code">
+                                        <Panel>
+                                            <c:Icon Data="{StaticResource Icon.Eye}" Width="15" Height="15" IsVisible="{Binding !#RevealRecoveryCode.IsChecked}" />
+                                            <c:Icon Data="{StaticResource Icon.EyeOff}" Width="15" Height="15" IsVisible="{Binding #RevealRecoveryCode.IsChecked}" />
+                                        </Panel>
+                                    </ToggleButton>
+                                </TextBox.InnerRightContent>
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding UnlockWithRecoveryCodeCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+                            <TextBox PasswordChar="•" Text="{Binding RecoveryNewPassphrase}" Height="42" Watermark="New master passphrase"
+                                     AutomationProperties.AutomationId="Unlock.NewPassphrase">
+                                <TextBox.InnerLeftContent>
+                                    <c:Icon Data="{StaticResource Icon.Key}" Width="15" Height="15" Margin="12,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                </TextBox.InnerLeftContent>
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding UnlockWithRecoveryCodeCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+                            <TextBox PasswordChar="•" Text="{Binding RecoveryConfirmPassphrase}" Height="42" Watermark="Confirm new passphrase"
+                                     AutomationProperties.AutomationId="Unlock.ConfirmPassphrase">
+                                <TextBox.InnerLeftContent>
+                                    <c:Icon Data="{StaticResource Icon.Key}" Width="15" Height="15" Margin="12,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                </TextBox.InnerLeftContent>
+                                <TextBox.KeyBindings>
+                                    <KeyBinding Gesture="Enter" Command="{Binding UnlockWithRecoveryCodeCommand}" />
+                                </TextBox.KeyBindings>
+                            </TextBox>
+                        </StackPanel>
+
                         <!-- Error Message -->
                         <Border Classes="banner danger" IsVisible="{Binding UnlockErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                             <Grid ColumnDefinitions="Auto, *">
@@ -277,15 +342,28 @@
                             </Grid>
                         </Border>
 
-                        <!-- Unlock Button -->
+                        <!-- Unlock Buttons -->
                         <Button Command="{Binding UnlockCommand}"
                                 Classes="primary" HorizontalAlignment="Stretch"
-                                IsDefault="True"
+                                IsVisible="{Binding !IsRecoveryUnlockMode}" IsDefault="{Binding !IsRecoveryUnlockMode}"
                                 AutomationProperties.AutomationId="Unlock.Button" Height="42">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <c:Icon Data="{StaticResource Icon.Unlock}" Width="16" Height="16" />
                                 <TextBlock Text="Unlock Vault" VerticalAlignment="Center" />
                             </StackPanel>
+                        </Button>
+                        <Button Command="{Binding UnlockWithRecoveryCodeCommand}"
+                                Classes="primary" HorizontalAlignment="Stretch"
+                                IsVisible="{Binding IsRecoveryUnlockMode}" IsDefault="{Binding IsRecoveryUnlockMode}"
+                                IsEnabled="{Binding !IsUnlockBusy}"
+                                AutomationProperties.AutomationId="Unlock.RecoverButton" Height="42">
+                            <Panel>
+                                <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding !IsUnlockBusy}">
+                                    <c:Icon Data="{StaticResource Icon.LifeBuoy}" Width="16" Height="16" />
+                                    <TextBlock Text="Recover &amp; Unlock" VerticalAlignment="Center" />
+                                </StackPanel>
+                                <TextBlock Text="Securing new passphrase…" VerticalAlignment="Center" IsVisible="{Binding IsUnlockBusy}" />
+                            </Panel>
                         </Button>
 
                         <!-- Recent Vaults Section -->

@@ -867,12 +867,119 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    // --- Unlock with Recovery Code ---
+    // Mirrors `akv recover`: open with the recovery code, set a new master passphrase,
+    // and enrol this device if it isn't already.
+
+    [ObservableProperty]
+    private bool _isRecoveryUnlockMode;
+
+    [ObservableProperty]
+    private string _recoveryUnlockCode = string.Empty;
+
+    [ObservableProperty]
+    private string _recoveryNewPassphrase = string.Empty;
+
+    [ObservableProperty]
+    private string _recoveryConfirmPassphrase = string.Empty;
+
+    [ObservableProperty]
+    private bool _isUnlockBusy;
+
+    [RelayCommand]
+    private void SetUnlockMode(string mode)
+    {
+        IsRecoveryUnlockMode = mode == "recovery";
+        UnlockErrorMessage = null;
+    }
+
+    [RelayCommand]
+    private async Task UnlockWithRecoveryCodeAsync()
+    {
+        if (IsUnlockBusy) return;
+
+        string code = RecoveryUnlockCode.Trim();
+        if (string.IsNullOrEmpty(code))
+        {
+            UnlockErrorMessage = "Enter your recovery code.";
+            return;
+        }
+        if (!CrockfordBase32.TryDecode(code, out _))
+        {
+            UnlockErrorMessage = "That isn't a valid recovery code. Check for typos.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(RecoveryNewPassphrase))
+        {
+            UnlockErrorMessage = "Choose a new master passphrase.";
+            return;
+        }
+        if (RecoveryNewPassphrase != RecoveryConfirmPassphrase)
+        {
+            UnlockErrorMessage = "The new passphrases don't match.";
+            return;
+        }
+        if (!File.Exists(TargetVaultPath))
+        {
+            UnlockErrorMessage = $"Vault file does not exist: {TargetVaultPath}";
+            return;
+        }
+
+        IsUnlockBusy = true;
+        UnlockErrorMessage = null;
+        string vaultPath = TargetVaultPath;
+        string newPassphrase = RecoveryNewPassphrase;
+        try
+        {
+            // Changing the passphrase runs Argon2id, which is deliberately slow; keep it off the UI thread.
+            var session = await Task.Run(() =>
+            {
+                var opened = VaultManager.OpenWithRecovery(vaultPath, code, _deviceKeyStore, _localStateManager);
+                try
+                {
+                    opened.ChangePassphrase(newPassphrase);
+                    if (!opened.IsDeviceEnrolled)
+                    {
+                        opened.EnrolDevice(Environment.MachineName);
+                    }
+                    return opened;
+                }
+                catch
+                {
+                    opened.Dispose();
+                    throw;
+                }
+            });
+
+            ResetRecoveryUnlock();
+            AttachSession(session);
+            SyncStatusText = "Vault recovered · new passphrase set";
+        }
+        catch (Exception ex)
+        {
+            UnlockErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsUnlockBusy = false;
+        }
+    }
+
+    private void ResetRecoveryUnlock()
+    {
+        IsRecoveryUnlockMode = false;
+        RecoveryUnlockCode = string.Empty;
+        RecoveryNewPassphrase = string.Empty;
+        RecoveryConfirmPassphrase = string.Empty;
+    }
+
     // --- Unlocked Workspace Commands ---
 
     [RelayCommand]
     private void Lock()
     {
         ResetRecoveryDialog();
+        ResetRecoveryUnlock();
         _session?.Dispose();
         _session = null;
         IsUnlocked = false;
