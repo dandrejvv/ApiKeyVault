@@ -55,7 +55,9 @@ public class MainWindowViewModelTests : IDisposable
         Assert.True(vm.IsUnlocked);
         Assert.False(vm.IsFirstRun);
         Assert.False(vm.IsLocked);
-        Assert.NotNull(vm.FirstRunRecoveryCode);
+        Assert.True(vm.IsRecoveryDialogOpen);
+        Assert.True(vm.IsRecoveryCodeStep);
+        Assert.NotNull(vm.RecoveryCode);
         Assert.True(File.Exists(_vaultPath));
     }
 
@@ -325,6 +327,70 @@ public class MainWindowViewModelTests : IDisposable
         vm.FirstRunPassphrase = "P@ssw0rd123456789!SafeKeyVault";
         Assert.Equal(4, vm.PassphraseStrengthScore);
         Assert.True(vm.IsStrengthBar4Active);
+    }
+
+    [Fact]
+    public async Task TestKey_ForUnsupportedProvider_DoesNotMarkKeyFailing()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+        createResult.Session.AddEntry("aws", "s3-access", "demo-aws-secret");
+        createResult.Session.Dispose();
+
+        var vm = CreateViewModel();
+        Assert.NotNull(vm.SelectedEntry);
+        Assert.False(vm.SelectedEntry.IsTestSupported);
+
+        await vm.TestSelectedEntryCommand.ExecuteAsync(null);
+
+        Assert.Null(vm.SelectedEntry.Entry.LastTest);
+        Assert.Equal(KeyStatus.Ok, vm.SelectedEntry.Status);
+        Assert.Equal(0, vm.AttentionCount);
+        Assert.Equal("No automated test", vm.SelectedEntry.TestStatusDescription);
+    }
+
+    [Fact]
+    public async Task RecoveryCode_Regenerate_RequiresPassphrase_RevokesOldCode_AndVerifiesGroup()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
+        string oldCode = createResult.RecoveryCode;
+        createResult.Session.Dispose();
+
+        var vm = CreateViewModel();
+        Assert.True(vm.IsUnlocked);
+
+        // Step 1: wrong passphrase is rejected and nothing changes
+        vm.OpenRecoveryDialogCommand.Execute(null);
+        Assert.True(vm.IsRecoveryDialogOpen);
+        Assert.True(vm.IsRecoveryConfirmStep);
+        vm.RecoveryPassphrase = "wrong-pass";
+        await vm.RegenerateRecoveryCodeCommand.ExecuteAsync(null);
+        Assert.True(vm.IsRecoveryConfirmStep);
+        Assert.NotNull(vm.RecoveryErrorMessage);
+        using (VaultManager.OpenWithRecovery(_vaultPath, oldCode, new InMemoryDeviceKeyStore(), _stateManager)) { }
+
+        // Step 2: correct passphrase issues a new code and revokes the old one
+        vm.RecoveryPassphrase = "test-pass";
+        await vm.RegenerateRecoveryCodeCommand.ExecuteAsync(null);
+        Assert.True(vm.IsRecoveryCodeStep);
+        string newCode = vm.RecoveryCode!;
+        Assert.NotEqual(oldCode, newCode);
+        Assert.Empty(vm.RecoveryPassphrase);
+        Assert.ThrowsAny<Exception>(() => VaultManager.OpenWithRecovery(_vaultPath, oldCode, new InMemoryDeviceKeyStore(), _stateManager));
+        using (VaultManager.OpenWithRecovery(_vaultPath, newCode, new InMemoryDeviceKeyStore(), _stateManager)) { }
+
+        // The code step can't be dismissed until a group is typed back correctly
+        vm.CancelRecoveryDialogCommand.Execute(null);
+        Assert.True(vm.IsRecoveryDialogOpen);
+        vm.RecoveryCheckInput = "XXXX";
+        vm.FinishRecoveryDialogCommand.Execute(null);
+        Assert.True(vm.IsRecoveryDialogOpen);
+
+        string expected = CrockfordBase32.GetGroups(newCode)[vm.RecoveryCheckGroupNumber - 1];
+        vm.RecoveryCheckInput = expected.ToLowerInvariant();
+        Assert.True(vm.IsRecoveryCheckValid);
+        vm.FinishRecoveryDialogCommand.Execute(null);
+        Assert.False(vm.IsRecoveryDialogOpen);
+        Assert.Null(vm.RecoveryCode);
     }
 
     [Fact]

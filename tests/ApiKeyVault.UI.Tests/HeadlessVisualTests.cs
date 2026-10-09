@@ -153,6 +153,31 @@ public class HeadlessVisualTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task RenderRecoveryCodeDialog()
+    {
+        VaultManager.CreateVault(_vaultPath, "P@ssw0rd", "TEST-MACHINE", FastKdf, _deviceStore, _stateManager).Session.Dispose();
+
+        var vm = new MainWindowViewModel(_deviceStore, _stateManager, defaultVaultPath: _vaultPath);
+        vm.UnlockPassphrase = "P@ssw0rd";
+        vm.UnlockCommand.Execute(null);
+
+        var window = new MainWindow { DataContext = vm, Width = 1080, Height = 720 };
+        window.Show();
+
+        vm.OpenRecoveryDialogCommand.Execute(null);
+        var confirmFrame = window.CaptureRenderedFrame();
+        Assert.NotNull(confirmFrame);
+        confirmFrame.Save(Path.Combine(_artifactDir, "9a_recovery_confirm.png"));
+
+        vm.RecoveryPassphrase = "P@ssw0rd";
+        await vm.RegenerateRecoveryCodeCommand.ExecuteAsync(null);
+        Assert.True(vm.IsRecoveryCodeStep);
+        var codeFrame = window.CaptureRenderedFrame();
+        Assert.NotNull(codeFrame);
+        codeFrame.Save(Path.Combine(_artifactDir, "9b_recovery_code.png"));
+    }
+
+    [AvaloniaFact]
     public void RenderEmptyVault()
     {
         VaultManager.CreateVault(_vaultPath, "P@ssw0rd", "TEST-MACHINE", FastKdf, _deviceStore, _stateManager).Session.Dispose();

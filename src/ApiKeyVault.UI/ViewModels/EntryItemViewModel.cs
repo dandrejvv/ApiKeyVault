@@ -107,14 +107,14 @@ public sealed partial class EntryItemViewModel : ObservableObject
     {
         get
         {
-            if (Entry.LastTest != null)
+            if (Entry.LastTest != null && (Entry.LastTest.Success || EntryStatusCalculator.IsFailedTest(Entry.LastTest)))
             {
                 return Entry.LastTest.Success
                     ? $"✓ Passed ({Entry.LastTest.Time:yyyy-MM-dd HH:mm})"
                     : $"✕ Failed: {Entry.LastTest.Message}";
             }
 
-            return IsTestSupported ? "Ready to test (live ping supported)" : "Manual test (no automated ping)";
+            return IsTestSupported ? "Not tested yet" : "No automated test";
         }
     }
 

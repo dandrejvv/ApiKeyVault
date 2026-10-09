@@ -24,7 +24,7 @@ public static class EntryStatusCalculator
             return KeyStatus.Revoked;
         }
 
-        if (entry.LastTest != null && !entry.LastTest.Success)
+        if (IsFailedTest(entry.LastTest))
         {
             return KeyStatus.Failing;
         }
@@ -48,4 +48,11 @@ public static class EntryStatusCalculator
 
         return KeyStatus.Ok;
     }
+
+    /// <summary>
+    /// A test counts as failed only when the provider answered with an HTTP error.
+    /// Older vaults may hold "could not test" results (no status code), which are ignored.
+    /// </summary>
+    public static bool IsFailedTest(EntryTestResult? test) =>
+        test is { Success: false, StatusCode: not null };
 }

@@ -309,6 +309,10 @@ public sealed class VaultSession : IDisposable
 
     public void RecordTestResult(VaultEntry entry, TestResult result)
     {
+        // A test that never reached the provider (unsupported provider, network error,
+        // redirect) says nothing about the key, so it must not mark the entry as failing.
+        if (result.CouldNotTest) return;
+
         entry.LastTest = new EntryTestResult
         {
             Time = DateTimeOffset.UtcNow,

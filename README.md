@@ -183,6 +183,8 @@ The desktop application is built on **Avalonia 11** with an **Obsidian Dark v2**
 - **Ephemeral Secret Reveal**: Click the eye icon to view a masked secret; an automated 10-second timer masks it again to protect against shoulder surfing.
 - **One-Click Command Generator**: Copy a ready-to-run `akv run -e ... -- <cmd>` snippet directly to your clipboard.
 - **Lock Screen & Recent Vaults Switcher**: Seamlessly toggle between multiple project vaults with keyboard shortcuts (`Enter` to unlock, `Esc` to cancel).
+- **Recovery Code**: Shown once when a vault is created (type one group back to confirm you saved it). *Recovery Code* in the sidebar replaces it after re-entering your master passphrase; the old code is revoked immediately.
+- **Live Key Tests**: *Test* sends one read-only request to the provider; it is disabled for providers without automated support, and a test that cannot run never marks a key as failing.
 - **Guided Empty States**: An empty vault offers *Add API Key*, *Import .env / JSON* and *Sample keys*; a search with no results offers *Clear filters*.
 
 ### Visual Design

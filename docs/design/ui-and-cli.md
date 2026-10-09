@@ -571,6 +571,8 @@ The mock-up in §7.2 is the target. The current build differs in these ways:
 - **Details:** provider tile, address and status pill; expiring / compromised / revoked banners; secret field with an inline reveal toggle and a *Copy Key* button (clipboard countdown shown underneath); a details card; a *Compromised* flag; *Revoke* / *Edit*; then *Test*, *akv run* and *Delete*.
 - **Empty states:** an empty vault shows an illustration with *Add API Key*, *Import .env / JSON* and *Sample keys*. A search or filter with no results shows *Clear filters*.
 - **Icons and branding:** emoji aren't used. Icons are stroke paths on a 24×24 grid (`Icon.*` resources) drawn by `Controls/Icon.cs`. The brand mark is `Controls/LogoMark.axaml`, and `Assets/app.ico` is rendered from it.
+- **Recovery code:** shown once after the first-run wizard creates a vault, and from *Recovery Code* in the sidebar (master passphrase required; the old code is revoked). Like `akv init` / `akv recovery new`, the dialog only closes once a randomly chosen group is typed back.
+- **Test:** disabled for providers without a live test. Results that never reached the provider ("could not test") aren't recorded, so they never mark a key as failing.
 - **Shortcuts implemented so far:** `Ctrl+K`, and `Enter` / `Esc` in the unlock screen, first-run wizard and add/edit dialog. The rest of §7.3 is still to do.
 
 ## 8. Secret handling in the interfaces

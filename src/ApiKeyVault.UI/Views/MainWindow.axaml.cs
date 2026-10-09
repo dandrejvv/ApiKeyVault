@@ -17,7 +17,7 @@ public partial class MainWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if (e.Key == Key.K && e.KeyModifiers.HasFlag(KeyModifiers.Control)
-            && DataContext is MainWindowViewModel { IsUnlocked: true, IsAddKeyDialogOpen: false })
+            && DataContext is MainWindowViewModel { IsUnlocked: true, IsAddKeyDialogOpen: false, IsRecoveryDialogOpen: false })
         {
             SearchBox.Focus();
             SearchBox.SelectAll();

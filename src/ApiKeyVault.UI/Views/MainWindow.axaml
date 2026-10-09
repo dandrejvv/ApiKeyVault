@@ -473,8 +473,17 @@
 
                         <!-- 5. Bottom Utilities -->
                         <Border Grid.Row="4" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,10,0,0">
-                            <Grid ColumnDefinitions="*, Auto">
-                                <Button Grid.Column="0" Classes="nav"
+                            <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto">
+                                <Button Grid.Row="0" Grid.ColumnSpan="2" Classes="nav" Margin="0,0,0,4"
+                                        Command="{Binding OpenRecoveryDialogCommand}"
+                                        ToolTip.Tip="Generate a new recovery code (revokes the current one)"
+                                        AutomationProperties.AutomationId="Nav.RecoveryCode">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <c:Icon Data="{StaticResource Icon.LifeBuoy}" Width="15" Height="15" />
+                                        <TextBlock Text="Recovery Code" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Row="1" Grid.Column="0" Classes="nav"
                                         Command="{Binding SwitchVaultCommand}"
                                         AutomationProperties.AutomationId="Nav.SwitchVault">
                                     <StackPanel Orientation="Horizontal" Spacing="10">
@@ -482,7 +491,7 @@
                                         <TextBlock Text="Switch Vault" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
-                                <Button Grid.Column="1" Classes="secondary" Padding="9,7" Margin="6,0,0,0"
+                                <Button Grid.Row="1" Grid.Column="1" Classes="secondary" Padding="9,7" Margin="6,0,0,0"
                                         Command="{Binding LockCommand}"
                                         ToolTip.Tip="Lock vault"
                                         AutomationProperties.AutomationId="Nav.Lock">
@@ -869,7 +878,9 @@
                                     <!-- Utility actions -->
                                     <Grid ColumnDefinitions="*, *, *" Margin="-6,-4,-6,0">
                                         <Button Grid.Column="0" Command="{Binding TestSelectedEntryCommand}"
+                                                IsEnabled="{Binding SelectedEntry.IsTestSupported}"
                                                 ToolTip.Tip="{Binding SelectedEntry.TestSupportTooltip}"
+                                                ToolTip.ShowOnDisabled="True"
                                                 Classes="subtle" FontSize="11.5" HorizontalAlignment="Center" Padding="8,5">
                                             <StackPanel Orientation="Horizontal" Spacing="6">
                                                 <c:Icon Data="{StaticResource Icon.Activity}" Width="13" Height="13" />
@@ -1060,6 +1071,124 @@
                                 <StackPanel Orientation="Horizontal" Spacing="7">
                                     <c:Icon Data="{StaticResource Icon.Check}" Width="14" Height="14" StrokeThickness="2.4" />
                                     <TextBlock Text="Save Key" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- ======================================================== -->
+        <!-- 5. RECOVERY CODE MODAL                                   -->
+        <!-- ======================================================== -->
+        <Border IsVisible="{Binding IsRecoveryDialogOpen}" Background="#c4030509" Padding="20" AutomationProperties.AutomationId="Recovery.Dialog">
+            <Border Classes="card elevated" Width="480" Padding="0" HorizontalAlignment="Center" VerticalAlignment="Center" BorderBrush="{StaticResource BorderStrongBrush}">
+                <Grid RowDefinitions="Auto, *, Auto">
+                    <!-- Header -->
+                    <Grid Grid.Row="0" ColumnDefinitions="Auto, *, Auto" Margin="24,22,18,6">
+                        <Border Grid.Column="0" Classes="iconTile" Width="38" Height="38" Margin="0,0,14,0" VerticalAlignment="Center">
+                            <c:Icon Data="{StaticResource Icon.LifeBuoy}" Width="18" Height="18" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding RecoveryDialogTitle}" FontSize="17" FontWeight="Bold" Foreground="{StaticResource OnSurfaceBrush}" />
+                            <TextBlock Text="Opens the vault if you forget your passphrase." FontSize="12" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                        </StackPanel>
+                        <Button Grid.Column="2" Command="{Binding CancelRecoveryDialogCommand}" IsVisible="{Binding IsRecoveryConfirmStep}"
+                                Classes="subtle" Padding="7" VerticalAlignment="Top" ToolTip.Tip="Close (Esc)">
+                            <c:Icon Data="{StaticResource Icon.X}" Width="14" Height="14" />
+                        </Button>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <Panel Margin="24,14,24,20">
+                            <!-- Step 1: confirm the passphrase before replacing the code -->
+                            <StackPanel Spacing="16" IsVisible="{Binding IsRecoveryConfirmStep}">
+                                <Border Classes="banner warning">
+                                    <Grid ColumnDefinitions="Auto, *">
+                                        <c:Icon Data="{StaticResource Icon.Alert}" Width="16" Height="16" Foreground="{StaticResource StatusWarningBrush}" VerticalAlignment="Top" Margin="0,1,10,0" />
+                                        <TextBlock Grid.Column="1" TextWrapping="Wrap" FontSize="12" Foreground="#fcd34d"
+                                                   Text="Generating a new code revokes your current one immediately. Any copy you saved before will stop working." />
+                                    </Grid>
+                                </Border>
+                                <StackPanel Spacing="6">
+                                    <TextBlock Classes="label" Text="MASTER PASSPHRASE" />
+                                    <TextBox PasswordChar="•" Text="{Binding RecoveryPassphrase}" Height="38" Watermark="Confirm it's you"
+                                             IsEnabled="{Binding !IsRecoveryBusy}"
+                                             AutomationProperties.AutomationId="Recovery.Passphrase">
+                                        <TextBox.InnerLeftContent>
+                                            <c:Icon Data="{StaticResource Icon.Lock}" Width="14" Height="14" Margin="11,0,0,0" Foreground="{StaticResource OnSurfaceDimBrush}" />
+                                        </TextBox.InnerLeftContent>
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding RegenerateRecoveryCodeCommand}" />
+                                            <KeyBinding Gesture="Escape" Command="{Binding CancelRecoveryDialogCommand}" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Step 2: show the code once and verify one group -->
+                            <StackPanel Spacing="16" IsVisible="{Binding IsRecoveryCodeStep}">
+                                <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{StaticResource OnSurfaceMutedBrush}"
+                                           Text="This code is shown only once. Store it in your password manager — it can't be displayed again." />
+                                <Border Background="{StaticResource PrimarySurfaceBrush}" BorderBrush="{StaticResource BorderAccentBrush}" BorderThickness="1" CornerRadius="10" Padding="14,14,14,10">
+                                    <StackPanel Spacing="10">
+                                        <SelectableTextBlock Text="{Binding RecoveryCode}" FontFamily="{StaticResource MonoFont}" FontSize="16" FontWeight="SemiBold"
+                                                             Foreground="{StaticResource SecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center"
+                                                             AutomationProperties.AutomationId="Recovery.Code" />
+                                        <Button Command="{Binding CopyRecoveryCodeCommand}" Classes="subtle" Foreground="{StaticResource SecondaryBrush}" HorizontalAlignment="Center" Padding="10,4">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <c:Icon Data="{StaticResource Icon.Copy}" Width="13" Height="13" />
+                                                <TextBlock Text="Copy" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel Spacing="6">
+                                    <TextBlock Classes="label" Text="{Binding RecoveryCheckGroupNumber, StringFormat='TYPE GROUP {0} TO CONFIRM YOU SAVED IT'}" />
+                                    <TextBox Classes="mono" Text="{Binding RecoveryCheckInput}" Height="38" Watermark="4 characters" MaxLength="4"
+                                             AutomationProperties.AutomationId="Recovery.Check">
+                                        <TextBox.InnerRightContent>
+                                            <c:Icon Data="{StaticResource Icon.Check}" Width="15" Height="15" Margin="0,0,11,0" StrokeThickness="2.6"
+                                                    Foreground="{StaticResource PrimaryBrush}" IsVisible="{Binding IsRecoveryCheckValid}" />
+                                        </TextBox.InnerRightContent>
+                                        <TextBox.KeyBindings>
+                                            <KeyBinding Gesture="Enter" Command="{Binding FinishRecoveryDialogCommand}" />
+                                        </TextBox.KeyBindings>
+                                    </TextBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </Panel>
+                    </ScrollViewer>
+
+                    <!-- Footer -->
+                    <Border Grid.Row="2" Background="{StaticResource SurfaceLowestBrush}" BorderBrush="{StaticResource BorderSubtleBrush}" BorderThickness="0,1,0,0"
+                            CornerRadius="0,0,16,16" Padding="24,14">
+                        <Grid ColumnDefinitions="*, Auto, Auto">
+                            <Grid Grid.Column="0" ColumnDefinitions="Auto, *" VerticalAlignment="Center" Margin="0,0,12,0"
+                                  IsVisible="{Binding RecoveryErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <c:Icon Data="{StaticResource Icon.Alert}" Width="14" Height="14" Foreground="{StaticResource StatusDangerBrush}" Margin="0,0,8,0" />
+                                <TextBlock Grid.Column="1" Text="{Binding RecoveryErrorMessage}" Foreground="#fda4af" FontSize="11.5" TextWrapping="Wrap" VerticalAlignment="Center" />
+                            </Grid>
+                            <TextBlock Grid.Column="0" Text="Checking passphrase…" FontSize="11.5" Foreground="{StaticResource OnSurfaceDimBrush}" VerticalAlignment="Center"
+                                       IsVisible="{Binding IsRecoveryBusy}" />
+
+                            <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelRecoveryDialogCommand}" Classes="secondary" Height="36" Padding="16,0"
+                                    IsVisible="{Binding IsRecoveryConfirmStep}" />
+                            <Button Grid.Column="2" Command="{Binding RegenerateRecoveryCodeCommand}" Classes="primary" Height="36" Margin="10,0,0,0"
+                                    IsVisible="{Binding IsRecoveryConfirmStep}" IsEnabled="{Binding !IsRecoveryBusy}"
+                                    AutomationProperties.AutomationId="Recovery.Generate">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <c:Icon Data="{StaticResource Icon.Refresh}" Width="14" Height="14" />
+                                    <TextBlock Text="Generate New Code" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Command="{Binding FinishRecoveryDialogCommand}" Classes="primary" Height="36" Margin="10,0,0,0"
+                                    IsVisible="{Binding IsRecoveryCodeStep}" IsEnabled="{Binding IsRecoveryCheckValid}"
+                                    AutomationProperties.AutomationId="Recovery.Done">
+                                <StackPanel Orientation="Horizontal" Spacing="7">
+                                    <c:Icon Data="{StaticResource Icon.Check}" Width="14" Height="14" StrokeThickness="2.4" />
+                                    <TextBlock Text="I've Saved It" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Button>
                         </Grid>

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ApiKeyVault.Core.Cryptography;
 using ApiKeyVault.Core.Model;
 using ApiKeyVault.Core.Presets;
 using ApiKeyVault.Core.Storage;
@@ -61,9 +62,6 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public bool IsStrengthBar2Active => PassphraseStrengthScore >= 2;
     public bool IsStrengthBar3Active => PassphraseStrengthScore >= 3;
     public bool IsStrengthBar4Active => PassphraseStrengthScore >= 4;
-
-    [ObservableProperty]
-    private string? _firstRunRecoveryCode;
 
     [ObservableProperty]
     private string? _firstRunErrorMessage;
@@ -626,13 +624,171 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 FirstRunVaultPath, FirstRunPassphrase, Environment.MachineName, null,
                 _deviceKeyStore, _localStateManager);
 
-            FirstRunRecoveryCode = result.RecoveryCode;
             AttachSession(result.Session);
+            ShowRecoveryCode(result.RecoveryCode, isNewVault: true);
         }
         catch (Exception ex)
         {
             FirstRunErrorMessage = ex.Message;
         }
+    }
+
+    // --- Recovery Code Dialog ---
+    // Step 1 (replace only): confirm the master passphrase. Step 2: show the code once and
+    // require one group to be typed back, mirroring `akv init` / `akv recovery new`.
+
+    [ObservableProperty]
+    private bool _isRecoveryDialogOpen;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRecoveryConfirmStep))]
+    private bool _isRecoveryCodeStep;
+
+    public bool IsRecoveryConfirmStep => !IsRecoveryCodeStep;
+
+    [ObservableProperty]
+    private bool _isRecoveryForNewVault;
+
+    [ObservableProperty]
+    private string _recoveryPassphrase = string.Empty;
+
+    [ObservableProperty]
+    private bool _isRecoveryBusy;
+
+    [ObservableProperty]
+    private string? _recoveryErrorMessage;
+
+    [ObservableProperty]
+    private string? _recoveryCode;
+
+    [ObservableProperty]
+    private int _recoveryCheckGroupNumber;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRecoveryCheckValid))]
+    private string _recoveryCheckInput = string.Empty;
+
+    private string _recoveryExpectedGroup = string.Empty;
+
+    public bool IsRecoveryCheckValid =>
+        _recoveryExpectedGroup.Length > 0 &&
+        string.Equals(RecoveryCheckInput.Trim(), _recoveryExpectedGroup, StringComparison.OrdinalIgnoreCase);
+
+    public string RecoveryDialogTitle => IsRecoveryForNewVault ? "Save your recovery code" : "Recovery code";
+
+    partial void OnIsRecoveryForNewVaultChanged(bool value) => OnPropertyChanged(nameof(RecoveryDialogTitle));
+
+    [RelayCommand]
+    private void OpenRecoveryDialog()
+    {
+        if (_session == null) return;
+        ResetRecoveryDialog();
+        IsRecoveryDialogOpen = true;
+    }
+
+    [RelayCommand]
+    private void CancelRecoveryDialog()
+    {
+        // Once a new code exists the old one is already revoked, so the code step can't be dismissed unverified.
+        if (IsRecoveryCodeStep) return;
+        ResetRecoveryDialog();
+    }
+
+    [RelayCommand]
+    private async Task RegenerateRecoveryCodeAsync()
+    {
+        if (_session == null || IsRecoveryBusy) return;
+        if (string.IsNullOrEmpty(RecoveryPassphrase))
+        {
+            RecoveryErrorMessage = "Enter your master passphrase to continue.";
+            return;
+        }
+
+        IsRecoveryBusy = true;
+        RecoveryErrorMessage = null;
+        string vaultPath = _session.VaultPath;
+        string passphrase = RecoveryPassphrase;
+        try
+        {
+            // Argon2id is deliberately slow; verify off the UI thread.
+            bool verified = await Task.Run(() =>
+            {
+                try
+                {
+                    using var verify = VaultManager.OpenWithPassphrase(vaultPath, passphrase, new InMemoryDeviceKeyStore(), _localStateManager);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            });
+
+            if (!verified)
+            {
+                RecoveryErrorMessage = "That passphrase is incorrect.";
+                return;
+            }
+
+            ShowRecoveryCode(_session.RegenerateRecoveryCode(), isNewVault: false);
+            SyncStatusText = "New recovery code generated";
+        }
+        catch (Exception ex)
+        {
+            RecoveryErrorMessage = ex.Message;
+        }
+        finally
+        {
+            RecoveryPassphrase = string.Empty;
+            IsRecoveryBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private void CopyRecoveryCode()
+    {
+        if (string.IsNullOrEmpty(RecoveryCode)) return;
+        _clipboard.SetText(RecoveryCode);
+        StartClipboardCountdown(20);
+    }
+
+    [RelayCommand]
+    private void FinishRecoveryDialog()
+    {
+        if (!IsRecoveryCheckValid)
+        {
+            RecoveryErrorMessage = $"That doesn't match group {RecoveryCheckGroupNumber}. Check the code you saved.";
+            return;
+        }
+
+        ResetRecoveryDialog();
+        SyncStatusText = "Recovery code saved";
+    }
+
+    private void ShowRecoveryCode(string code, bool isNewVault)
+    {
+        string[] groups = CrockfordBase32.GetGroups(code);
+        RecoveryCheckGroupNumber = Random.Shared.Next(1, groups.Length + 1);
+        _recoveryExpectedGroup = groups[RecoveryCheckGroupNumber - 1];
+        RecoveryCode = code;
+        RecoveryCheckInput = string.Empty;
+        RecoveryErrorMessage = null;
+        IsRecoveryForNewVault = isNewVault;
+        IsRecoveryCodeStep = true;
+        IsRecoveryDialogOpen = true;
+    }
+
+    private void ResetRecoveryDialog()
+    {
+        IsRecoveryDialogOpen = false;
+        IsRecoveryCodeStep = false;
+        IsRecoveryForNewVault = false;
+        RecoveryCode = null;
+        RecoveryPassphrase = string.Empty;
+        RecoveryCheckInput = string.Empty;
+        RecoveryErrorMessage = null;
+        _recoveryExpectedGroup = string.Empty;
+        OnPropertyChanged(nameof(IsRecoveryCheckValid));
     }
 
     // --- Lock Screen Commands ---
@@ -724,6 +880,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void Lock()
     {
+        ResetRecoveryDialog();
         _session?.Dispose();
         _session = null;
         IsUnlocked = false;
@@ -843,14 +1000,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private async Task TestSelectedEntryAsync()
     {
         if (SelectedEntry == null || _session == null) return;
+        if (!SelectedEntry.IsTestSupported)
+        {
+            SyncStatusText = $"No automated test for {SelectedEntry.ProviderDisplayName}";
+            return;
+        }
 
         SyncStatusText = $"Testing {SelectedEntry.Address}...";
         var tester = new HttpProviderTester();
         var result = await tester.TestKeyAsync(SelectedEntry.Provider, SelectedEntry.Entry.Secret, SelectedEntry.Entry.ExtraFields);
 
         _session.RecordTestResult(SelectedEntry.Entry, result);
+        string currentId = SelectedEntry.Id;
         UpdateEntries();
-        SyncStatusText = result.Success ? "Test passed" : $"Test failed: {result.Message}";
+        SelectedEntry = FilteredEntries.FirstOrDefault(e => e.Id == currentId);
+        SyncStatusText = result.Success ? "Test passed"
+            : result.CouldNotTest ? $"Could not test: {result.Message}"
+            : $"Test failed: {result.Message}";
     }
 
     [RelayCommand]
