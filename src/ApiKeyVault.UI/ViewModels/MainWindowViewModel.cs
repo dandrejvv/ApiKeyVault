@@ -379,11 +379,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         TotalKeysCount = entries.Count;
 
         var now = DateTimeOffset.UtcNow;
-        AttentionCount = entries.Count(e =>
-        {
-            var status = EntryStatusCalculator.Compute(e, now);
-            return status != KeyStatus.Ok && status != KeyStatus.Revoked;
-        });
+        AttentionCount = entries.Count(e => EntryStatusCalculator.NeedsAttention(EntryStatusCalculator.Compute(e, now)));
 
         ProductionCount = entries.Count(e =>
             new EntryItemViewModel(e).Tags.Contains("prod", StringComparer.OrdinalIgnoreCase) ||
@@ -433,11 +429,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         if (SelectedFilter == "attention")
         {
-            filtered = filtered.Where(e =>
-            {
-                var status = EntryStatusCalculator.Compute(e, now);
-                return status != KeyStatus.Ok && status != KeyStatus.Revoked;
-            });
+            filtered = filtered.Where(e => EntryStatusCalculator.NeedsAttention(EntryStatusCalculator.Compute(e, now)));
         }
         else if (SelectedFilter == "revoked")
         {
@@ -464,7 +456,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         else if (SelectedFilter.StartsWith("tag:"))
         {
             var targetTag = SelectedFilter["tag:".Length..].Trim();
-            filtered = filtered.Where(e => new EntryItemViewModel(e).Tags.Contains(targetTag, StringComparer.OrdinalIgnoreCase));
+            filtered = filtered.Where(e => EntryTags.HasTag(e, targetTag));
         }
         else if (SelectedFilter != "all")
         {
@@ -479,7 +471,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 e.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 e.Provider.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 (e.Comment != null && e.Comment.Contains(query, StringComparison.OrdinalIgnoreCase)) ||
-                new EntryItemViewModel(e).Tags.Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase)));
+                EntryTags.Derive(e).Any(t => t.Contains(query, StringComparison.OrdinalIgnoreCase)));
         }
 
         FilteredEntries.Clear();
@@ -749,7 +741,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         if (string.IsNullOrEmpty(RecoveryCode)) return;
         _clipboard.SetText(RecoveryCode);
-        StartClipboardCountdown(20);
+        StartClipboardCountdown(ClipboardClearSeconds());
     }
 
     [RelayCommand]
@@ -917,7 +909,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _clipboard.SetText(secret);
         _session.RecordEntryUsed(SelectedEntry.Entry);
 
-        StartClipboardCountdown(20);
+        StartClipboardCountdown(ClipboardClearSeconds());
+    }
+
+    /// <summary>Same setting as `akv get` (`akv config set clipboard_clear_seconds`), default 20.</summary>
+    private int ClipboardClearSeconds()
+    {
+        int seconds = _localStateManager.Load().Settings.ClipboardClearSeconds;
+        return seconds > 0 ? seconds : 20;
     }
 
     private void StartClipboardCountdown(int seconds)
@@ -1240,12 +1239,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             ? new DateTimeOffset(KeyDialogExpiresDate.Value.Date.AddDays(1).AddSeconds(-1), DateTimeOffset.Now.Offset)
             : null;
 
-        var parsedTags = KeyDialogTags
-            .Split([',', ';', ' '], StringSplitOptions.RemoveEmptyEntries)
-            .Select(t => t.Trim().TrimStart('#').ToLowerInvariant())
-            .Where(t => !string.IsNullOrEmpty(t))
-            .Distinct()
-            .ToList();
+        var parsedTags = EntryTags.Parse(KeyDialogTags);
 
         // If no explicit tags provided, infer tags from address slices
         if (parsedTags.Count == 0 && address.Contains('/'))

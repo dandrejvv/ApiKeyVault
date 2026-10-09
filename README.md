@@ -49,7 +49,7 @@ On trusted devices, ApiKeyVault binds your hardware using the **OS Credential St
 - 💻 **Hardware-Bound Passwordless Unlock**: Enroll trusted workstations and laptops. Devices open the vault instantly without typing a master password, using OS-protected private keys.
 - 📅 **Token Expiration & Review Lifecycle**: Optional calendar date picker (`CalendarDatePicker`) with one-click presets (`+30 days`, `+90 days`, `+180 days`, `+1 year`, `No expiry`) to proactively prevent expired keys from disrupting workflows.
 - 🚀 **Direct Process Injection (`akv run`)**: Run any developer tool or script with secrets injected strictly into memory via environment variables—secrets never touch the disk, terminal history, or process arguments.
-- 📋 **Auto-Shredding Clipboard**: Copy a key with one keystroke; ApiKeyVault automatically scrubs the clipboard memory after 45 seconds.
+- 📋 **Auto-Shredding Clipboard**: Copy a key with one keystroke; ApiKeyVault automatically scrubs the clipboard after 20 seconds (configurable with `akv config set clipboard_clear_seconds <n>`; the desktop app uses the same setting).
 - 🩺 **Live Provider Health Checks**: Validate key liveness and connectivity with one click (`akv test`) against OpenAI, Anthropic, OpenRouter, Azure OpenAI, Google Gemini, and custom endpoints.
 - 🔄 **Safe Multi-Device Cloud Sync**: Synchronize seamlessly over OneDrive or cloud drives. Lockbox architecture allows retiring or wiping a lost laptop remotely without resetting other devices.
 - 🖥️ **Obsidian Vault v2 Desktop UI**: Built with Avalonia 11 for cross-platform performance. Features an obsidian dark aesthetic with crisp vector icons, keyboard-first navigation (Enter/Esc dialog bindings, Ctrl+K search), and quick tag/platform filtering.
@@ -57,13 +57,13 @@ On trusted devices, ApiKeyVault binds your hardware using the **OS Credential St
 
 ```bash
 $ akv list
-╭────────┬───────────┬─────────────┬──────────────────┬───────────┬───────────────────────╮
-│ Status │ Provider  │ Name        │ Expires / Review │ Last Test │ Comment               │
-├────────┼───────────┼─────────────┼──────────────────┼───────────┼───────────────────────┤
-│ ● OK   │ openai    │ prod        │ expires in 88d   │ ✓ Passed  │ Production model key  │
-│ ● OK   │ anthropic │ claude-code │ expires in 28d   │ ✓ Passed  │ Developer tool token  │
-│ ▲ Due  │ stripe    │ live        │ review due       │ Not run   │ Quarterly rotation    │
-╰────────┴───────────┴─────────────┴──────────────────┴───────────┴───────────────────────╯
+╭────────┬───────────┬─────────────┬───────┬──────────────────┬───────────┬──────────────────────╮
+│ Status │ Provider  │ Name        │ Tags  │ Expires / Review │ Last Test │ Comment              │
+├────────┼───────────┼─────────────┼───────┼──────────────────┼───────────┼──────────────────────┤
+│ ●      │ openai    │ prod        │ #prod │ exp in 88d       │ ✓         │ Production model key │
+│ ▲      │ anthropic │ claude-code │ —     │ exp in 12d       │ ✓         │ Developer tool token │
+│ ⚠      │ stripe    │ live        │ #live │ —                │ —         │ Billing gateway      │
+╰────────┴───────────┴─────────────┴───────┴──────────────────┴───────────┴──────────────────────╯
 
 $ akv run -e OPENAI_API_KEY=openai/prod -- npm run start
 [akv] Injected 1 secret into environment. Spawning process...
@@ -106,18 +106,20 @@ akv init
 
 ### 3. Add Keys
 
-Store API secrets under clean addresses (`provider/name`):
+Store API secrets under clean addresses (`provider/name`). Secrets are never passed as command-line arguments — you're prompted for them (hidden input), or they're read from the clipboard or stdin:
 
 ```bash
-# Add an OpenAI key with 90-day review reminder
-akv add openai/prod --secret "your-openai-api-key" --comment "Production model access" --days 90
+# Add an OpenAI key with a 90-day review reminder and tags (prompts for the secret)
+akv add -p openai -n prod --comment "Production model access" --review-by +90d --tags "prod, intent"
 
-# Add an Anthropic token with a specific expiration date
-akv add anthropic/claude --secret "your-anthropic-api-key" --expires 2026-12-31
+# Add an Anthropic key with a fixed expiry date, taking the secret from the clipboard
+akv add -p anthropic -n claude --expires 2026-12-31 --from-clipboard
 
-# Add Stripe secret
-akv add stripe/live --secret "your-stripe-api-key" --comment "Billing gateway"
+# Scripts: pipe the secret in
+echo "$STRIPE_KEY" | akv add -p stripe -n live --comment "Billing gateway" --secret-stdin
 ```
+
+Dates accept `YYYY-MM-DD`, relative offsets (`+30d`, `+12w`, `+6m`, `+1y`) or `none` (to clear on `akv edit`).
 
 ### 4. Use Keys Without Leaking Them
 
@@ -129,7 +131,7 @@ akv run -e OPENAI_API_KEY=openai/prod -e STRIPE_SECRET_KEY=stripe/live -- npm ru
 ```
 
 #### Safe Copy to Clipboard
-Copies the key to your clipboard and automatically cleanses it after 45 seconds:
+Copies the key to your clipboard and automatically clears it after 20 seconds (configurable):
 
 ```bash
 akv get openai/prod
@@ -153,18 +155,23 @@ dotnet run --project src/ApiKeyVault.UI
 | Command | Description | Example |
 |---|---|---|
 | `akv init` | Create a new encrypted vault and enroll device | `akv init --path ~/OneDrive/vault.akv` |
-| `akv join` | Enroll a new machine into an existing vault | `akv join --path ~/OneDrive/vault.akv` |
-| `akv list` | List all keys with status, provider, and expiry | `akv list` or `akv list --filter due` |
-| `akv get <key>` | Copy secret to clipboard (cleared in 45s) | `akv get openai/prod` |
+| `akv join [path]` | Enroll a new machine into an existing vault | `akv join ~/OneDrive/vault.akv` |
+| `akv list` | List keys with status, tags, expiry and last test | `akv list --attention`, `akv list --tag prod`, `akv list --due`, `akv list --failing` |
+| `akv find <text>` | Search by address, comment or tag | `akv find billing`, `akv find "#prod"` |
+| `akv status` | Vault summary and attention items (expired, due, failing, compromised) | `akv status` |
+| `akv get <key>` | Copy secret to clipboard (cleared after 20s by default) | `akv get openai/prod` |
 | `akv get <key> --reveal` | Temporarily display secret in terminal | `akv get openai/prod --reveal` |
 | `akv run -e VAR=<key> -- <cmd>` | Execute command with secrets injected into environment | `akv run -e OPENAI_API_KEY=openai/prod -- python main.py` |
-| `akv add <key>` | Add a new API key entry | `akv add stripe/live` |
-| `akv edit <key>` | Edit comments, metadata, or expiration | `akv edit openai/prod --days 180` |
+| `akv add` | Add a new API key entry | `akv add -p stripe -n live --tags prod --expires +1y` |
+| `akv edit <key>` | Edit comment, tags, dates and flags | `akv edit openai/prod --expires +180d --tags "prod, intent"` |
+| `akv edit <key> --compromised` | Flag a leaked key (`--not-compromised` clears it) | `akv edit stripe/live --compromised` |
+| `akv edit <key> --revoked` | Mark a key as revoked (`--restore` reactivates it) | `akv edit github/old-pat --revoked` |
 | `akv rotate <key>` | Rotate a secret (preserves 7-day grace period) | `akv rotate openai/prod` |
-| `akv test [key]` | Perform live API connectivity checks | `akv test` or `akv test openai/prod` |
+| `akv test [key]` | Live API check; testing all keys skips providers without an automated test | `akv test` or `akv test openai/prod` |
 | `akv import <file>` | Import secrets from `.env`, JSON, or text files | `akv import .env.production` |
-| `akv devices` | List and manage enrolled hardware devices | `akv devices list` |
-| `akv devices remove <id>`| Sever a retired/lost device & rotate vault key | `akv devices remove LAPTOP-02` |
+| `akv access list` | List enrolled devices and lockboxes | `akv access list` |
+| `akv access remove <devices>` | Sever a retired/lost device & rotate vault key | `akv access remove LAPTOP-02` |
+| `akv recovery new` | Replace the recovery code (passphrase required) | `akv recovery new` |
 
 ---
 
@@ -243,7 +250,7 @@ flowchart TB
 | **Lost or Stolen Device** | Remove the device from any other enrolled machine via `akv devices remove`. The vault key is automatically rotated, cutting off the lost machine permanently. |
 | **File Tampering or Bit-Rot** | AEAD authentication tag covers both header and payload. Any modified byte fails validation before decryption. |
 | **Rollback / Downgrade Attack** | Monotonically increasing save counter and identity verification detect stale vault copies. |
-| **Shoulder Surfing & Screen Recording** | Secrets masked by default; 10s auto-remask in UI; 45s clipboard shredding; terminal secrets entered via hidden buffers. |
+| **Shoulder Surfing & Screen Recording** | Secrets masked by default; 10s auto-remask in UI; 20s clipboard clearing (configurable); terminal secrets entered via hidden buffers. |
 
 ---
 

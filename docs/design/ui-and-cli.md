@@ -188,7 +188,7 @@ $ akv import C:\Users\me\keys.txt
 **UC-05 Find a key**
 
 - CLI:
-  - `akv list` shows a table: status, provider, name, expires/review, last test, comment.
+  - `akv list` shows a table: status, provider, name, tags, expires/review, last test, comment. Filters: `--provider`, `--tag`, `--due`, `--failing`, `--attention`, `--search`.
   - Filters: `--provider`, `--due [30d]`, `--failing`, `--search <text>`.
   - `akv find <text>` does a fuzzy search across provider, name and comment.
 - UI:
@@ -573,6 +573,7 @@ The mock-up in §7.2 is the target. The current build differs in these ways:
 - **Icons and branding:** emoji aren't used. Icons are stroke paths on a 24×24 grid (`Icon.*` resources) drawn by `Controls/Icon.cs`. The brand mark is `Controls/LogoMark.axaml`, and `Assets/app.ico` is rendered from it.
 - **Recovery code:** shown once after the first-run wizard creates a vault, and from *Recovery Code* in the sidebar (master passphrase required; the old code is revoked). Like `akv init` / `akv recovery new`, the dialog only closes once a randomly chosen group is typed back.
 - **Test:** disabled for providers without a live test. Results that never reached the provider ("could not test") aren't recorded, so they never mark a key as failing.
+- **CLI parity (2026-10-09):** tags (derived by the shared `EntryTags` rules in Core), the compromised / revoked flags, the "needs attention" rule and the failing-test rule are shared by both front ends. The CLI sets them with `akv add/edit --tags`, `akv edit --compromised / --not-compromised / --revoked / --restore`, and filters with `akv list --tag / --attention`. Dates accept `YYYY-MM-DD`, `+30d / +12w / +6m / +1y` or `none`, matching the UI's expiry presets. Both front ends clear the clipboard after `clipboard_clear_seconds` (default 20).
 - **Shortcuts implemented so far:** `Ctrl+K`, and `Enter` / `Esc` in the unlock screen, first-run wizard and add/edit dialog. The rest of §7.3 is still to do.
 
 ## 8. Secret handling in the interfaces

@@ -101,7 +101,13 @@ public sealed class VaultSession : IDisposable
         return null;
     }
 
-    public List<VaultEntry> SearchEntries(string? query = null, string? provider = null, bool dueOnly = false, bool failingOnly = false)
+    public List<VaultEntry> SearchEntries(
+        string? query = null,
+        string? provider = null,
+        bool dueOnly = false,
+        bool failingOnly = false,
+        string? tag = null,
+        bool attentionOnly = false)
     {
         var now = DateTimeOffset.UtcNow;
         var queryable = Payload.Entries.AsEnumerable();
@@ -113,7 +119,7 @@ public sealed class VaultSession : IDisposable
 
         if (failingOnly)
         {
-            queryable = queryable.Where(e => e.LastTest != null && !e.LastTest.Success);
+            queryable = queryable.Where(e => EntryStatusCalculator.IsFailedTest(e.LastTest));
         }
 
         if (dueOnly)
@@ -125,12 +131,23 @@ public sealed class VaultSession : IDisposable
             });
         }
 
+        if (attentionOnly)
+        {
+            queryable = queryable.Where(e => EntryStatusCalculator.NeedsAttention(EntryStatusCalculator.Compute(e, now)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(tag))
+        {
+            queryable = queryable.Where(e => EntryTags.HasTag(e, tag));
+        }
+
         if (!string.IsNullOrWhiteSpace(query))
         {
             string q = query.Trim();
             queryable = queryable.Where(e =>
                 $"{e.Provider}/{e.Name}".Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                (e.Comment != null && e.Comment.Contains(q, StringComparison.OrdinalIgnoreCase)));
+                (e.Comment != null && e.Comment.Contains(q, StringComparison.OrdinalIgnoreCase)) ||
+                EntryTags.Derive(e).Any(t => t.Contains(q.TrimStart('#'), StringComparison.OrdinalIgnoreCase)));
         }
 
         return queryable.OrderBy(e => e.Provider).ThenBy(e => e.Name).ToList();
@@ -197,7 +214,9 @@ public sealed class VaultSession : IDisposable
         Dictionary<string, string>? newExtraFields = null,
         bool? isCompromised = null,
         bool? isRevoked = null,
-        List<string>? tags = null)
+        List<string>? tags = null,
+        bool clearExpires = false,
+        bool clearReviewBy = false)
     {
         var entry = FindEntry(idOrAddress, allowShortName: false)
             ?? throw new KeyNotFoundException($"Entry '{idOrAddress}' not found.");
@@ -218,6 +237,8 @@ public sealed class VaultSession : IDisposable
         if (newSource != null) entry.Source = newSource;
         if (newExpires.HasValue) entry.Expires = newExpires;
         if (newReviewBy.HasValue) entry.ReviewBy = newReviewBy;
+        if (clearExpires) entry.Expires = null;
+        if (clearReviewBy) entry.ReviewBy = null;
         if (newExtraFields != null) entry.ExtraFields = newExtraFields;
         if (isCompromised.HasValue) entry.IsCompromised = isCompromised.Value;
         if (isRevoked.HasValue) entry.IsRevoked = isRevoked.Value;

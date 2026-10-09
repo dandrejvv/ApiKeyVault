@@ -26,8 +26,16 @@ public sealed class ListSettings : GlobalSettings
     public bool Failing { get; set; }
 
     [CommandOption("-s|--search <TEXT>")]
-    [Description("Filter by search text.")]
+    [Description("Filter by search text (address, comment or tag).")]
     public string? Search { get; set; }
+
+    [CommandOption("-t|--tag <TAG>")]
+    [Description("Show only entries with this tag.")]
+    public string? Tag { get; set; }
+
+    [CommandOption("--attention")]
+    [Description("Show only entries that need attention (due, expired, failing or compromised).")]
+    public bool Attention { get; set; }
 }
 
 public sealed class ListCommand : Command<ListSettings>
@@ -43,7 +51,9 @@ public sealed class ListCommand : Command<ListSettings>
                 query: settings.Search,
                 provider: settings.Provider,
                 dueOnly: settings.Due,
-                failingOnly: settings.Failing);
+                failingOnly: settings.Failing,
+                tag: settings.Tag,
+                attentionOnly: settings.Attention);
 
             if (settings.Json)
             {
@@ -57,6 +67,9 @@ public sealed class ListCommand : Command<ListSettings>
                     expires = e.Expires,
                     review_by = e.ReviewBy,
                     status = EntryStatusCalculator.Compute(e, DateTimeOffset.UtcNow).ToString().ToLowerInvariant(),
+                    tags = EntryTags.Derive(e),
+                    compromised = e.IsCompromised,
+                    revoked = e.IsRevoked,
                     created = e.Created,
                     last_used = e.LastUsed,
                     last_test = e.LastTest != null ? new
@@ -75,6 +88,7 @@ public sealed class ListCommand : Command<ListSettings>
             table.AddColumn("Status");
             table.AddColumn("Provider");
             table.AddColumn("Name");
+            table.AddColumn("Tags");
             table.AddColumn("Expires / Review");
             table.AddColumn("Last Test");
             table.AddColumn("Comment");
@@ -89,6 +103,8 @@ public sealed class ListCommand : Command<ListSettings>
                     KeyStatus.Due => "[yellow]▲[/]",
                     KeyStatus.Expired => "[red]▲[/]",
                     KeyStatus.Failing => "[red]✕[/]",
+                    KeyStatus.Compromised => "[red]⚠[/]",
+                    KeyStatus.Revoked => "[grey]⊘[/]",
                     _ => "[grey]?[/]"
                 };
 
@@ -105,17 +121,23 @@ public sealed class ListCommand : Command<ListSettings>
                 }
 
                 string testStr = "—";
-                if (e.LastTest != null)
+                if (e.LastTest is { Success: true })
                 {
-                    testStr = e.LastTest.Success
-                        ? "[green]✓[/]"
-                        : $"[red]✕ {e.LastTest.StatusCode}[/]";
+                    testStr = "[green]✓[/]";
                 }
+                else if (EntryStatusCalculator.IsFailedTest(e.LastTest))
+                {
+                    testStr = $"[red]✕ {e.LastTest!.StatusCode}[/]";
+                }
+
+                var tags = EntryTags.Derive(e);
+                string tagStr = tags.Count > 0 ? string.Join(" ", tags.Select(t => "#" + t)) : "—";
 
                 table.AddRow(
                     statusMarkup,
                     Markup.Escape(e.Provider),
                     Markup.Escape(e.Name),
+                    Markup.Escape(tagStr),
                     Markup.Escape(expStr),
                     testStr,
                     Markup.Escape(e.Comment ?? "")

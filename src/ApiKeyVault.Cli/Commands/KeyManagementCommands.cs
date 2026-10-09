@@ -28,12 +28,16 @@ public sealed class AddSettings : GlobalSettings
     public string? Source { get; set; }
 
     [CommandOption("--expires <DATE>")]
-    [Description("Expiration date (YYYY-MM-DD).")]
+    [Description("Expiration date: " + DateInput.Help + ".")]
     public string? Expires { get; set; }
 
     [CommandOption("--review-by <DATE>")]
-    [Description("Review reminder date (YYYY-MM-DD).")]
+    [Description("Review reminder date: " + DateInput.Help + ".")]
     public string? ReviewBy { get; set; }
+
+    [CommandOption("-t|--tags <TAGS>")]
+    [Description("Comma-separated tags, e.g. \"prod, intent\".")]
+    public string? Tags { get; set; }
 
     [CommandOption("--from-clipboard")]
     [Description("Read secret from clipboard and clear clipboard afterwards.")]
@@ -58,6 +62,19 @@ public sealed class AddCommand : Command<AddSettings>
     {
         try
         {
+            var now = DateTimeOffset.UtcNow;
+            DateTimeOffset? expires = null;
+            if (settings.Expires != null && !DateInput.TryParse(settings.Expires, now, out expires))
+            {
+                return CliErrors.InvalidDate("--expires", settings.Expires, settings.Json);
+            }
+
+            DateTimeOffset? reviewBy = null;
+            if (settings.ReviewBy != null && !DateInput.TryParse(settings.ReviewBy, now, out reviewBy))
+            {
+                return CliErrors.InvalidDate("--review-by", settings.ReviewBy, settings.Json);
+            }
+
             var stateManager = new LocalStateManager();
             using var session = CliContext.OpenSession(settings, stateManager: stateManager);
 
@@ -111,18 +128,6 @@ public sealed class AddCommand : Command<AddSettings>
                 return 2;
             }
 
-            DateTimeOffset? expires = null;
-            if (!string.IsNullOrWhiteSpace(settings.Expires) && DateTimeOffset.TryParse(settings.Expires, out var exp))
-            {
-                expires = exp;
-            }
-
-            DateTimeOffset? reviewBy = null;
-            if (!string.IsNullOrWhiteSpace(settings.ReviewBy) && DateTimeOffset.TryParse(settings.ReviewBy, out var rev))
-            {
-                reviewBy = rev;
-            }
-
             // Live test on save
             if (!settings.NoTest)
             {
@@ -170,7 +175,8 @@ public sealed class AddCommand : Command<AddSettings>
                 comment: settings.Comment,
                 source: settings.Source,
                 expires: expires,
-                reviewBy: reviewBy);
+                reviewBy: reviewBy,
+                tags: EntryTags.Parse(settings.Tags));
 
             if (!settings.Json)
             {
@@ -206,10 +212,32 @@ public sealed class EditSettings : GlobalSettings
     public string? NewSource { get; set; }
 
     [CommandOption("--expires <DATE>")]
+    [Description("New expiration date: " + DateInput.Help + ".")]
     public string? NewExpires { get; set; }
 
     [CommandOption("--review-by <DATE>")]
+    [Description("New review reminder date: " + DateInput.Help + ".")]
     public string? NewReviewBy { get; set; }
+
+    [CommandOption("-t|--tags <TAGS>")]
+    [Description("Replace tags (comma-separated). Use \"\" to remove all tags.")]
+    public string? NewTags { get; set; }
+
+    [CommandOption("--compromised")]
+    [Description("Flag the key as compromised (leaked or exposed).")]
+    public bool Compromised { get; set; }
+
+    [CommandOption("--not-compromised")]
+    [Description("Clear the compromised flag.")]
+    public bool NotCompromised { get; set; }
+
+    [CommandOption("--revoked")]
+    [Description("Mark the key as revoked (decommissioned, kept for reference).")]
+    public bool Revoked { get; set; }
+
+    [CommandOption("--restore")]
+    [Description("Restore a revoked key to active.")]
+    public bool Restore { get; set; }
 }
 
 public sealed class EditCommand : Command<EditSettings>
@@ -218,6 +246,28 @@ public sealed class EditCommand : Command<EditSettings>
     {
         try
         {
+            if (settings.Compromised && settings.NotCompromised)
+            {
+                return CliErrors.Conflict("--compromised", "--not-compromised", settings.Json);
+            }
+            if (settings.Revoked && settings.Restore)
+            {
+                return CliErrors.Conflict("--revoked", "--restore", settings.Json);
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            DateTimeOffset? expires = null;
+            if (settings.NewExpires != null && !DateInput.TryParse(settings.NewExpires, now, out expires))
+            {
+                return CliErrors.InvalidDate("--expires", settings.NewExpires, settings.Json);
+            }
+
+            DateTimeOffset? reviewBy = null;
+            if (settings.NewReviewBy != null && !DateInput.TryParse(settings.NewReviewBy, now, out reviewBy))
+            {
+                return CliErrors.InvalidDate("--review-by", settings.NewReviewBy, settings.Json);
+            }
+
             var stateManager = new LocalStateManager();
             using var session = CliContext.OpenSession(settings, stateManager: stateManager);
 
@@ -229,25 +279,18 @@ public sealed class EditCommand : Command<EditSettings>
                 return 4;
             }
 
-            DateTimeOffset? expires = null;
-            if (settings.NewExpires != null && DateTimeOffset.TryParse(settings.NewExpires, out var exp))
-            {
-                expires = exp;
-            }
-
-            DateTimeOffset? reviewBy = null;
-            if (settings.NewReviewBy != null && DateTimeOffset.TryParse(settings.NewReviewBy, out var rev))
-            {
-                reviewBy = rev;
-            }
-
             session.EditEntry(
                 settings.KeyAddress,
                 newName: settings.NewName,
                 newComment: settings.NewComment,
                 newSource: settings.NewSource,
                 newExpires: expires,
-                newReviewBy: reviewBy);
+                newReviewBy: reviewBy,
+                isCompromised: settings.Compromised ? true : settings.NotCompromised ? false : null,
+                isRevoked: settings.Revoked ? true : settings.Restore ? false : null,
+                tags: settings.NewTags != null ? EntryTags.Parse(settings.NewTags) : null,
+                clearExpires: settings.NewExpires != null && expires == null,
+                clearReviewBy: settings.NewReviewBy != null && reviewBy == null);
 
             if (!settings.Json)
             {
@@ -444,6 +487,15 @@ public sealed class TestCommand : Command<TestSettings>
                 return 0;
             }
 
+            // When testing the whole vault, keys without an automated test are skipped (the UI disables Test for them).
+            bool testingAll = settings.All || string.IsNullOrWhiteSpace(settings.KeyAddress);
+            int skipped = 0;
+            if (testingAll)
+            {
+                skipped = targets.Count(t => !HttpProviderTester.IsSupported(t.Provider));
+                targets = targets.Where(t => HttpProviderTester.IsSupported(t.Provider)).ToList();
+            }
+
             bool anyFailed = false;
             var table = new Table().Border(TableBorder.Rounded);
             table.AddColumn("Provider");
@@ -475,11 +527,18 @@ public sealed class TestCommand : Command<TestSettings>
 
             if (!settings.Json)
             {
-                AnsiConsole.Write(table);
+                if (targets.Count > 0)
+                {
+                    AnsiConsole.Write(table);
+                }
+                if (skipped > 0)
+                {
+                    AnsiConsole.MarkupLine($"[grey]Skipped {skipped} key(s) with no automated test. Supported: {Markup.Escape(string.Join(", ", HttpProviderTester.SupportedProviders))}.[/]");
+                }
             }
             else
             {
-                Console.WriteLine(JsonSerializer.Serialize(new { tested = targets.Count, failed = anyFailed }));
+                Console.WriteLine(JsonSerializer.Serialize(new { tested = targets.Count, skipped, failed = anyFailed }));
             }
 
             return anyFailed ? 5 : 0;
@@ -506,6 +565,7 @@ public sealed class StatusCommand : Command<GlobalSettings>
             var dueEntries = entries.Where(e => EntryStatusCalculator.Compute(e, now) == KeyStatus.Due).ToList();
             var expiredEntries = entries.Where(e => EntryStatusCalculator.Compute(e, now) == KeyStatus.Expired).ToList();
             var failingEntries = entries.Where(e => EntryStatusCalculator.Compute(e, now) == KeyStatus.Failing).ToList();
+            var compromisedEntries = entries.Where(e => EntryStatusCalculator.Compute(e, now) == KeyStatus.Compromised).ToList();
 
             var staleDevices = session.Payload.LockboxRegistry
                 .Where(r => r.Kind == "device" && r.LastUsed.HasValue && (now - r.LastUsed.Value).TotalDays > 90)
@@ -524,6 +584,7 @@ public sealed class StatusCommand : Command<GlobalSettings>
                         due_count = dueEntries.Count,
                         expired_count = expiredEntries.Count,
                         failing_count = failingEntries.Count,
+                        compromised_count = compromisedEntries.Count,
                         stale_devices = staleDevices.Select(d => d.Name)
                     }
                 };
@@ -542,25 +603,29 @@ public sealed class StatusCommand : Command<GlobalSettings>
 
             AnsiConsole.Write(table);
 
-            if (dueEntries.Count > 0 || expiredEntries.Count > 0 || failingEntries.Count > 0 || staleDevices.Count > 0)
+            if (dueEntries.Count > 0 || expiredEntries.Count > 0 || failingEntries.Count > 0 || compromisedEntries.Count > 0 || staleDevices.Count > 0)
             {
                 AnsiConsole.WriteLine();
-                AnsiConsole.MarkupLine("[yellow bold]Attention Items:[Reset]");
+                AnsiConsole.MarkupLine("[yellow bold]Attention Items:[/]");
+                foreach (var bad in compromisedEntries)
+                {
+                    AnsiConsole.MarkupLine($"  [red]⚠[/] [bold]{Markup.Escape(bad.Provider)}/{Markup.Escape(bad.Name)}[/] is marked as compromised. Rotate or revoke it.");
+                }
                 foreach (var exp in expiredEntries)
                 {
-                    AnsiConsole.MarkupLine($"  [red]▲[/] [bold]{exp.Provider}/{exp.Name}[/] has expired.");
+                    AnsiConsole.MarkupLine($"  [red]▲[/] [bold]{Markup.Escape(exp.Provider)}/{Markup.Escape(exp.Name)}[/] has expired.");
                 }
                 foreach (var due in dueEntries)
                 {
-                    AnsiConsole.MarkupLine($"  [yellow]▲[/] [bold]{due.Provider}/{due.Name}[/] is due for review/expiry.");
+                    AnsiConsole.MarkupLine($"  [yellow]▲[/] [bold]{Markup.Escape(due.Provider)}/{Markup.Escape(due.Name)}[/] is due for review/expiry.");
                 }
                 foreach (var fail in failingEntries)
                 {
-                    AnsiConsole.MarkupLine($"  [red]✕[/] [bold]{fail.Provider}/{fail.Name}[/] test failing: {Markup.Escape(fail.LastTest?.Message ?? "")}");
+                    AnsiConsole.MarkupLine($"  [red]✕[/] [bold]{Markup.Escape(fail.Provider)}/{Markup.Escape(fail.Name)}[/] test failing: {Markup.Escape(fail.LastTest?.Message ?? "")}");
                 }
                 foreach (var dev in staleDevices)
                 {
-                    AnsiConsole.MarkupLine($"  [yellow]⚠[/] Device [bold]{dev.Name}[/] has not been used in > 90 days.");
+                    AnsiConsole.MarkupLine($"  [yellow]⚠[/] Device [bold]{Markup.Escape(dev.Name)}[/] has not been used in > 90 days.");
                 }
             }
             else

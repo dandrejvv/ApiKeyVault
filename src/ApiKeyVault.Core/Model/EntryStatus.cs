@@ -49,6 +49,9 @@ public static class EntryStatusCalculator
         return KeyStatus.Ok;
     }
 
+    /// <summary>Everything except healthy and deliberately revoked keys needs attention.</summary>
+    public static bool NeedsAttention(KeyStatus status) => status is not (KeyStatus.Ok or KeyStatus.Revoked);
+
     /// <summary>
     /// A test counts as failed only when the provider answered with an HTTP error.
     /// Older vaults may hold "could not test" results (no status code), which are ignored.

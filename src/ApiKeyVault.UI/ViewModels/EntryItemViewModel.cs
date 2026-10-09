@@ -133,88 +133,7 @@ public sealed partial class EntryItemViewModel : ObservableObject
         _ => "active"
     };
 
-    public IReadOnlyList<string> Tags
-    {
-        get
-        {
-            var list = new List<string>();
-
-            // 1. Explicit tags saved on the entry
-            if (Entry.Tags != null && Entry.Tags.Count > 0)
-            {
-                foreach (var t in Entry.Tags)
-                {
-                    string cleaned = t.Trim().TrimStart('#').ToLowerInvariant();
-                    if (!string.IsNullOrEmpty(cleaned) && cleaned.Any(char.IsLetter) && !list.Contains(cleaned))
-                    {
-                        list.Add(cleaned);
-                    }
-                }
-            }
-
-            // 2. Multi-slice path parsing from Address (e.g. provider/slice1/slice2/name)
-            var slices = Address.Split('/', StringSplitOptions.RemoveEmptyEntries)
-                                .Select(s => s.Trim().ToLowerInvariant())
-                                .ToList();
-
-            if (slices.Count >= 3)
-            {
-                // In multi-slice paths (e.g. provider/env/team/name):
-                // Intermediate slices [1..^1] are hierarchical scope tags
-                for (int i = 1; i < slices.Count - 1; i++)
-                {
-                    string slice = slices[i];
-                    if (!string.IsNullOrEmpty(slice) && slice.Any(char.IsLetter) && !list.Contains(slice))
-                    {
-                        list.Add(slice);
-                    }
-                }
-
-                // If the last slice is also a recognized category keyword (e.g. 'intent', 'personal'), include it
-                string lastName = slices[^1];
-                if (IsCategoryKeyword(lastName) && !list.Contains(lastName))
-                {
-                    list.Add(lastName);
-                }
-            }
-            else if (slices.Count == 2)
-            {
-                // In standard 2-slice provider/name:
-                // Only extract recognized category keywords or prefixes (e.g. 'prod', 'live', 'beta', 'dev', 'intent', 'personal')
-                string name = slices[1];
-                foreach (var kw in KnownCategoryKeywords)
-                {
-                    if (name.Equals(kw, StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith(kw + "-", StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith(kw + "_", StringComparison.OrdinalIgnoreCase) ||
-                        name.EndsWith("-" + kw, StringComparison.OrdinalIgnoreCase) ||
-                        name.EndsWith("_" + kw, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (!list.Contains(kw)) list.Add(kw);
-                    }
-                }
-            }
-
-            // 3. Hashtags in comment (e.g. "#intent #personal")
-            if (!string.IsNullOrWhiteSpace(Comment))
-            {
-                var words = Comment.Split([' ', ',', ';'], StringSplitOptions.RemoveEmptyEntries);
-                foreach (var w in words)
-                {
-                    if (w.StartsWith('#') && w.Length > 1)
-                    {
-                        string tag = w.TrimStart('#').ToLowerInvariant();
-                        if (tag.Any(char.IsLetter) && !list.Contains(tag))
-                        {
-                            list.Add(tag);
-                        }
-                    }
-                }
-            }
-
-            return list;
-        }
-    }
+    public IReadOnlyList<string> Tags => EntryTags.Derive(Entry);
 
     public bool HasTags => Tags.Count > 0;
     public bool HasNoTags => Tags.Count == 0;
@@ -285,14 +204,4 @@ public sealed partial class EntryItemViewModel : ObservableObject
     {
         Entry = entry;
     }
-
-    private static readonly string[] KnownCategoryKeywords =
-    [
-        "intent", "personal", "prod", "production", "dev", "development",
-        "staging", "stag", "test", "testing", "live", "beta", "git",
-        "embeddings", "ai", "qa", "sandbox", "demo", "admin"
-    ];
-
-    private static bool IsCategoryKeyword(string value) =>
-        KnownCategoryKeywords.Any(k => string.Equals(k, value, StringComparison.OrdinalIgnoreCase));
 }
