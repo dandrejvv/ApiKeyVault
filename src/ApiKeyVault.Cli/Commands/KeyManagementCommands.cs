@@ -101,7 +101,7 @@ public sealed class AddCommand : Command<AddSettings>
             }
 
             string secret = string.Empty;
-            var clipboard = new WindowsClipboardService();
+            var clipboard = ClipboardServiceFactory.CreateDefault();
 
             if (settings.FromClipboard)
             {
@@ -350,7 +350,7 @@ public sealed class RotateCommand : Command<RotateSettings>
             }
 
             string newSecret = string.Empty;
-            var clipboard = new WindowsClipboardService();
+            var clipboard = ClipboardServiceFactory.CreateDefault();
 
             if (settings.FromClipboard)
             {

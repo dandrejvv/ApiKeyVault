@@ -16,7 +16,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private readonly IDeviceKeyStore _deviceKeyStore;
     private readonly LocalStateManager _localStateManager;
     private readonly IStorageDialogService? _storageService;
-    private readonly WindowsClipboardService _clipboard;
+    private readonly IClipboardService _clipboard;
     private DispatcherTimer? _remaskTimer;
     private DispatcherTimer? _clipboardTimer;
     private int _clipboardRemainingSeconds;
@@ -202,7 +202,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         _deviceKeyStore = deviceKeyStore ?? DeviceKeyStoreFactory.CreateDefault();
         _localStateManager = localStateManager ?? new LocalStateManager();
         _storageService = storageService;
-        _clipboard = new WindowsClipboardService();
+        _clipboard = ClipboardServiceFactory.CreateDefault();
 
         InitializeState(defaultVaultPath);
     }
@@ -557,7 +557,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void CopyTargetVaultPath()
     {
-        _clipboard.SetText(FirstRunVaultPath);
+        if (!TrySetClipboard(FirstRunVaultPath)) return;
         SyncStatusText = "Copied target path";
     }
 
@@ -740,7 +740,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void CopyRecoveryCode()
     {
         if (string.IsNullOrEmpty(RecoveryCode)) return;
-        _clipboard.SetText(RecoveryCode);
+        if (!TrySetClipboard(RecoveryCode)) return;
         StartClipboardCountdown(ClipboardClearSeconds());
     }
 
@@ -1013,7 +1013,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (SelectedEntry == null || _session == null) return;
 
         string secret = SelectedEntry.Entry.Secret;
-        _clipboard.SetText(secret);
+        if (!TrySetClipboard(secret)) return;
         _session.RecordEntryUsed(SelectedEntry.Entry);
 
         StartClipboardCountdown(ClipboardClearSeconds());
@@ -1042,7 +1042,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             if (_clipboardRemainingSeconds <= 0)
             {
                 _clipboardTimer?.Stop();
-                _clipboard.Clear();
+                TryClearClipboard();
                 ClipboardCountdownText = null;
             }
             else
@@ -1057,8 +1057,34 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void ClearClipboardNow()
     {
         _clipboardTimer?.Stop();
-        _clipboard.Clear();
+        TryClearClipboard();
         ClipboardCountdownText = null;
+    }
+
+    private bool TrySetClipboard(string text)
+    {
+        try
+        {
+            _clipboard.SetText(text);
+            return true;
+        }
+        catch (ClipboardUnavailableException ex)
+        {
+            SyncStatusText = ex.Message;
+            return false;
+        }
+    }
+
+    private void TryClearClipboard()
+    {
+        try
+        {
+            _clipboard.Clear();
+        }
+        catch (ClipboardUnavailableException ex)
+        {
+            SyncStatusText = ex.Message;
+        }
     }
 
     [RelayCommand]
@@ -1098,7 +1124,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     {
         if (SelectedEntry == null) return;
         string cmd = $"akv run -e {SelectedEntry.Provider.ToUpperInvariant()}_API_KEY={SelectedEntry.Address} -- <cmd>";
-        _clipboard.SetText(cmd);
+        if (!TrySetClipboard(cmd)) return;
         SyncStatusText = "Copied command line";
     }
 

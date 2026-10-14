@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,6 +11,23 @@ public interface IClipboardService
     string? GetText();
     void Clear();
     bool MatchesCurrent(byte[] expectedHash);
+}
+
+public static class ClipboardServiceFactory
+{
+    public static IClipboardService CreateDefault()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return new WindowsClipboardService();
+        }
+        return new CommandLineClipboardService();
+    }
+}
+
+public sealed class ClipboardUnavailableException : VaultException
+{
+    public ClipboardUnavailableException(string message) : base(message) { }
 }
 
 public sealed class WindowsClipboardService : IClipboardService
@@ -160,4 +178,168 @@ public sealed class WindowsClipboardService : IClipboardService
         byte[] currentHash = SHA256.HashData(Encoding.UTF8.GetBytes(current));
         return CryptographicOperations.FixedTimeEquals(currentHash, expectedHash);
     }
+}
+
+/// <summary>
+/// Clipboard access on Linux and macOS via the platform's command-line tools:
+/// wl-copy/wl-paste (Wayland), xclip or xsel (X11), pbcopy/pbpaste (macOS).
+/// Secrets are always passed over stdin, never as arguments.
+/// </summary>
+public sealed class CommandLineClipboardService : IClipboardService
+{
+    private static readonly TimeSpan ToolTimeout = TimeSpan.FromSeconds(5);
+
+    private readonly Lazy<ClipboardTool?> _tool = new(DetectTool);
+
+    public void SetText(string text) => Run(RequireTool().Copy, input: text);
+
+    public string? GetText()
+    {
+        var (exitCode, output) = Run(RequireTool().Paste, input: null, captureOutput: true);
+        // wl-paste exits non-zero when the clipboard is empty.
+        return exitCode == 0 && output.Length > 0 ? output : null;
+    }
+
+    public void Clear() => Run(RequireTool().Clear, input: RequireTool().ClearViaEmptyInput ? string.Empty : null);
+
+    public bool MatchesCurrent(byte[] expectedHash)
+    {
+        string? current = GetText();
+        if (current == null) return false;
+        byte[] currentHash = SHA256.HashData(Encoding.UTF8.GetBytes(current));
+        return CryptographicOperations.FixedTimeEquals(currentHash, expectedHash);
+    }
+
+    private ClipboardTool RequireTool() =>
+        _tool.Value ?? throw new ClipboardUnavailableException(
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? "Clipboard is unavailable: pbcopy/pbpaste were not found."
+                : "Clipboard is unavailable: install wl-clipboard (Wayland) or xclip/xsel (X11).");
+
+    private static ClipboardTool? DetectTool()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            return HasExecutable("pbcopy") && HasExecutable("pbpaste")
+                ? new ClipboardTool(["pbcopy"], ["pbpaste"], ["pbcopy"], ClearViaEmptyInput: true)
+                : null;
+        }
+
+        bool wayland = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY"));
+        bool x11 = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY"));
+
+        if (wayland && HasExecutable("wl-copy") && HasExecutable("wl-paste"))
+        {
+            // --sensitive hints clipboard history managers (e.g. cliphist) not to record the secret.
+            string[] copy = WlCopySupportsSensitive() ? ["wl-copy", "--sensitive"] : ["wl-copy"];
+            return new ClipboardTool(copy, ["wl-paste", "--no-newline"], ["wl-copy", "--clear"], ClearViaEmptyInput: false);
+        }
+
+        if (x11 && HasExecutable("xclip"))
+        {
+            return new ClipboardTool(
+                ["xclip", "-selection", "clipboard", "-in"],
+                ["xclip", "-selection", "clipboard", "-out"],
+                ["xclip", "-selection", "clipboard", "-in"],
+                ClearViaEmptyInput: true);
+        }
+
+        if (x11 && HasExecutable("xsel"))
+        {
+            return new ClipboardTool(
+                ["xsel", "--clipboard", "--input"],
+                ["xsel", "--clipboard", "--output"],
+                ["xsel", "--clipboard", "--clear"],
+                ClearViaEmptyInput: false);
+        }
+
+        return null;
+    }
+
+    private static bool WlCopySupportsSensitive()
+    {
+        try
+        {
+            var (_, output) = Run(["wl-copy", "--help"], input: null, captureOutput: true);
+            return output.Contains("--sensitive", StringComparison.Ordinal);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool HasExecutable(string name)
+    {
+        string? path = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(path)) return false;
+        return path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Any(dir => File.Exists(Path.Combine(dir, name)));
+    }
+
+    private static (int ExitCode, string Output) Run(string[] command, string? input, bool captureOutput = false)
+    {
+        var startInfo = new ProcessStartInfo(command[0])
+        {
+            UseShellExecute = false,
+            RedirectStandardInput = input != null,
+            // Copy tools (wl-copy, xclip) fork a background process that keeps serving the selection.
+            // Redirecting their stdout/stderr would leave our pipes held open by that child, so only
+            // capture output for tools that exit straight away.
+            RedirectStandardOutput = captureOutput,
+            RedirectStandardError = captureOutput,
+        };
+        foreach (string arg in command.Skip(1))
+        {
+            startInfo.ArgumentList.Add(arg);
+        }
+        if (captureOutput)
+        {
+            startInfo.StandardOutputEncoding = new UTF8Encoding(false);
+        }
+
+        using var process = Process.Start(startInfo)
+            ?? throw new ClipboardUnavailableException($"Failed to start '{command[0]}'.");
+
+        if (input != null)
+        {
+            using (var stdin = new StreamWriter(process.StandardInput.BaseStream, new UTF8Encoding(false)))
+            {
+                stdin.Write(input);
+            }
+        }
+
+        string output = string.Empty;
+        if (captureOutput)
+        {
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+            if (!Task.WaitAll([stdoutTask, stderrTask], ToolTimeout))
+            {
+                TryKill(process);
+                throw new ClipboardUnavailableException($"'{command[0]}' timed out.");
+            }
+            output = stdoutTask.Result;
+        }
+
+        if (!process.WaitForExit(ToolTimeout))
+        {
+            TryKill(process);
+            throw new ClipboardUnavailableException($"'{command[0]}' timed out.");
+        }
+
+        if (!captureOutput && process.ExitCode != 0)
+        {
+            throw new ClipboardUnavailableException($"'{command[0]}' failed with exit code {process.ExitCode}.");
+        }
+
+        return (process.ExitCode, output);
+    }
+
+    private static void TryKill(Process process)
+    {
+        try { process.Kill(entireProcessTree: true); } catch { }
+    }
+
+    private sealed record ClipboardTool(string[] Copy, string[] Paste, string[] Clear, bool ClearViaEmptyInput);
 }

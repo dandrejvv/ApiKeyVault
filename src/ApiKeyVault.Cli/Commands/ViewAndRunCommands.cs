@@ -275,7 +275,7 @@ public sealed class GetCommand : Command<GetSettings>
             }
 
             // 3. Clipboard mode (default)
-            var clipboard = new WindowsClipboardService();
+            var clipboard = ClipboardServiceFactory.CreateDefault();
             clipboard.SetText(secret);
             byte[] secretHash = SHA256.HashData(Encoding.UTF8.GetBytes(secret));
 
