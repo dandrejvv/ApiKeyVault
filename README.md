@@ -6,6 +6,12 @@
 
 <br/>
 
+[![Build & Test](https://github.com/dandrejvv/ApiKeyVault/actions/workflows/ci.yml/badge.svg)](https://github.com/dandrejvv/ApiKeyVault/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/dandrejvv/ApiKeyVault?color=10b981&label=release)](https://github.com/dandrejvv/ApiKeyVault/releases)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](UNLICENSE)
+
+<br/>
+
 <p align="center">
   <a href="#quickstart">Quickstart</a> •
   <a href="#key-features">Key Features</a> •
@@ -79,7 +85,17 @@ $ akv run -e OPENAI_API_KEY=openai/prod -- npm run start
 - [.NET 10.0 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) or later
 - Supported OS: Windows 10/11, macOS, Linux
 
-### 1. Build and Install
+### 1. Install or Build
+
+**Download Pre-built Binaries (No .NET runtime required):**  
+Grab the latest standalone executables or ZIP archives directly from [GitHub Releases](https://github.com/dandrejvv/ApiKeyVault/releases):
+- `ApiKeyVault.exe` — Self-contained Desktop GUI for Windows
+- `akv.exe` — Self-contained CLI for Windows
+- `ApiKeyVault-win-x64.zip` — Both combined
+
+---
+
+**Or build from source:**
 
 ```bash
 # Clone the repository

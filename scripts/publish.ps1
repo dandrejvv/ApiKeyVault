@@ -25,6 +25,9 @@ param(
 
     [string]$Configuration = 'Release',
 
+    # Optional version stamp (e.g. 1.0.0)
+    [string]$Version,
+
     # Also produce dist/ApiKeyVault-<runtime>.zip
     [switch]$Zip
 )
@@ -57,6 +60,10 @@ else {
         '-p:DebugType=none',
         '-o', $out
     )
+}
+
+if ($Version) {
+    $publishArgs += "-p:Version=$Version"
 }
 
 $projects = @(

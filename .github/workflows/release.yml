@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name (e.g. v0.1.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore Dependencies
+        run: dotnet restore ApiKeyVault.slnx
+
+      - name: Run Test Suites
+        run: dotnet test ApiKeyVault.slnx -c Release -p:UseSharedCompilation=false --verbosity normal
+
+      - name: Determine Version
+        id: get_version
+        shell: pwsh
+        run: |
+          $rawTag = "${{ github.event.inputs.tag_name || github.ref_name }}"
+          # Strip leading 'v' if present (e.g. v1.0.0 -> 1.0.0)
+          $version = if ($rawTag.StartsWith('v')) { $rawTag.Substring(1) } else { $rawTag }
+          if (-not $version) {
+              $version = "0.1.0"
+          }
+          Write-Host "Releasing version: $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag_name=$rawTag" >> $env:GITHUB_OUTPUT
+
+      - name: Publish Windows x64 (Single-File EXEs & ZIP)
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Runtime win-x64 -Zip -Version ${{ steps.get_version.outputs.version }}
+
+      - name: Publish Windows ARM64 (Single-File EXEs & ZIP)
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Runtime win-arm64 -Zip -Version ${{ steps.get_version.outputs.version }}
+
+      - name: Publish Portable Build (Cross-Platform ZIP)
+        shell: pwsh
+        run: |
+          ./scripts/publish.ps1 -Runtime portable -Zip -Version ${{ steps.get_version.outputs.version }}
+
+      - name: Create GitHub Release & Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag_name }}
+          name: ApiKeyVault ${{ steps.get_version.outputs.tag_name }}
+          files: |
+            dist/ApiKeyVault-win-x64.zip
+            dist/ApiKeyVault-win-arm64.zip
+            dist/ApiKeyVault-portable.zip
+            dist/win-x64/ApiKeyVault.exe
+            dist/win-x64/akv.exe
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.tag_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

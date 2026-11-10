@@ -1,3 +1,4 @@
+using System.Reflection;
 using ApiKeyVault.Cli.Commands;
 using Spectre.Console.Cli;
 
@@ -6,6 +7,16 @@ var app = new CommandApp();
 app.Configure(config =>
 {
     config.SetApplicationName("akv");
+
+    var asm = typeof(Program).Assembly;
+    var version = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                  ?? asm.GetName().Version?.ToString(3);
+    if (!string.IsNullOrEmpty(version))
+    {
+        var plusIndex = version.IndexOf('+');
+        if (plusIndex >= 0) version = version[..plusIndex];
+        config.SetApplicationVersion(version);
+    }
 
     config.AddCommand<InitCommand>("init")
         .WithDescription("Create a new vault");
