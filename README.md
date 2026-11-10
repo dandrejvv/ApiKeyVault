@@ -7,7 +7,7 @@
 <br/>
 
 [![Build & Test](https://github.com/dandrejvv/ApiKeyVault/actions/workflows/ci.yml/badge.svg)](https://github.com/dandrejvv/ApiKeyVault/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/dandrejvv/ApiKeyVault?color=10b981&label=release)](https://github.com/dandrejvv/ApiKeyVault/releases)
+[![Release](https://img.shields.io/github/v/release/dandrejvv/ApiKeyVault?color=10b981&label=Release&logo=github)](https://github.com/dandrejvv/ApiKeyVault/releases)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](UNLICENSE)
 
 <br/>
