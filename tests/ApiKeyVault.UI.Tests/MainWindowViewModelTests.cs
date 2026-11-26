@@ -140,23 +140,50 @@ public class MainWindowViewModelTests : IDisposable
     {
         var createResult = VaultManager.CreateVault(_vaultPath, "test-pass", "MAIN-PC", FastKdf, _deviceStore, _stateManager);
         createResult.Session.AddEntry("openai", "test-key", "secret-value-123");
+        createResult.Session.AddEntry("openai", "short-key", "short-12345"); // 11 chars (< 12)
         createResult.Session.Dispose();
 
         var vm = CreateViewModel();
-        Assert.NotNull(vm.SelectedEntry);
+        var longEntry = vm.FilteredEntries.Single(e => e.Name == "test-key");
+        var shortEntry = vm.FilteredEntries.Single(e => e.Name == "short-key");
 
+        vm.SelectedEntry = longEntry;
         Assert.False(vm.IsSecretRevealed);
-        Assert.Equal("••••••••••••••••", vm.RevealedSecret);
+        Assert.False(vm.IsSecretPeeking);
+        Assert.False(vm.IsSecretVisible);
+        Assert.Equal("se••••••••23", vm.RevealedSecret);
 
-        // Reveal
+        // Reveal (10s toggle)
         vm.ToggleRevealSecretCommand.Execute(null);
         Assert.True(vm.IsSecretRevealed);
+        Assert.True(vm.IsSecretVisible);
         Assert.Equal("secret-value-123", vm.RevealedSecret);
 
         // Toggle back
         vm.ToggleRevealSecretCommand.Execute(null);
         Assert.False(vm.IsSecretRevealed);
-        Assert.Equal("••••••••••••••••", vm.RevealedSecret);
+        Assert.False(vm.IsSecretVisible);
+        Assert.Equal("se••••••••23", vm.RevealedSecret);
+
+        // Peek (hold-to-reveal)
+        vm.BeginPeekSecretCommand.Execute(null);
+        Assert.True(vm.IsSecretPeeking);
+        Assert.True(vm.IsSecretVisible);
+        Assert.Equal("secret-value-123", vm.RevealedSecret);
+
+        vm.EndPeekSecretCommand.Execute(null);
+        Assert.False(vm.IsSecretPeeking);
+        Assert.False(vm.IsSecretVisible);
+        Assert.Equal("se••••••••23", vm.RevealedSecret);
+
+        // Short entry (< 12 chars) hides all characters when not peeking/revealed
+        vm.SelectedEntry = shortEntry;
+        Assert.Equal(SecretMasker.FullMask, vm.RevealedSecret);
+        vm.BeginPeekSecretCommand.Execute(null);
+        Assert.Equal("short-12345", vm.RevealedSecret);
+        vm.LockCommand.Execute(null);
+        Assert.False(vm.IsSecretPeeking);
+        Assert.Equal(SecretMasker.FullMask, vm.RevealedSecret);
     }
 
     [Fact]

@@ -16,6 +16,7 @@ public sealed partial class EntryItemViewModel : ObservableObject
     public string Provider => Entry.Provider;
     public string Name => Entry.Name;
     public string Address => $"{Entry.Provider}/{Entry.Name}";
+    public string MaskedSecretPreview => SecretMasker.MaskWithEnds(Entry.Secret);
     public string? Comment => Entry.Comment;
     public string? Source => Entry.Source;
     public DateTimeOffset Created => Entry.Created;

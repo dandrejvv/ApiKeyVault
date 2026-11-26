@@ -1,6 +1,8 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using ApiKeyVault.Core.Cryptography;
 using ApiKeyVault.Core.Model;
@@ -198,6 +200,69 @@ public class HeadlessVisualTests : IDisposable
         var frame = window.CaptureRenderedFrame();
         Assert.NotNull(frame);
         frame.Save(Path.Combine(_artifactDir, "8_empty_vault.png"));
+    }
+
+    [AvaloniaFact]
+    public void PeekButton_RevealsWhilePressed_AndObscuresOnRelease()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "P@ssw0rd", "TEST-MACHINE", FastKdf, _deviceStore, _stateManager);
+        createResult.Session.AddEntry("openai", "prod-key", "sk-proj-secret-99");
+        createResult.Session.Dispose();
+
+        var vm = new MainWindowViewModel(_deviceStore, _stateManager, defaultVaultPath: _vaultPath);
+        vm.UnlockPassphrase = "P@ssw0rd";
+        vm.UnlockCommand.Execute(null);
+
+        var window = new MainWindow { DataContext = vm, Width = 1080, Height = 720 };
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        Assert.Equal("sk••••••••99", vm.RevealedSecret);
+
+        var peekButton = window.FindControl<Button>("PeekButton");
+        Assert.NotNull(peekButton);
+        var center = peekButton.TranslatePoint(new Point(peekButton.Bounds.Width / 2, peekButton.Bounds.Height / 2), window);
+        Assert.NotNull(center);
+
+        window.MouseDown(center.Value, MouseButton.Left);
+        Assert.True(vm.IsSecretPeeking);
+        Assert.Equal("sk-proj-secret-99", vm.RevealedSecret);
+
+        window.MouseUp(center.Value, MouseButton.Left);
+        Assert.False(vm.IsSecretPeeking);
+        Assert.Equal("sk••••••••99", vm.RevealedSecret);
+    }
+
+    [AvaloniaFact]
+    public void ListPane_ShowsMaskedSecretColumn_OnlyWhenWideEnough()
+    {
+        var createResult = VaultManager.CreateVault(_vaultPath, "P@ssw0rd", "TEST-MACHINE", FastKdf, _deviceStore, _stateManager);
+        createResult.Session.AddEntry("openai", "prod-key", "sk-proj-secret-99");
+        createResult.Session.Dispose();
+
+        var vm = new MainWindowViewModel(_deviceStore, _stateManager, defaultVaultPath: _vaultPath);
+        vm.UnlockPassphrase = "P@ssw0rd";
+        vm.UnlockCommand.Execute(null);
+
+        var window = new MainWindow { DataContext = vm, Width = 1080, Height = 720 };
+        window.Show();
+        window.CaptureRenderedFrame();
+
+        var listPane = window.FindControl<Border>("ListPane");
+        Assert.NotNull(listPane);
+        Assert.DoesNotContain("wide", listPane.Classes);
+        Assert.Equal("sk••••••••99", vm.FilteredEntries[0].MaskedSecretPreview);
+
+        // Widening the window reveals the SECRET column
+        window.Width = 1320;
+        window.CaptureRenderedFrame();
+        Assert.Contains("wide", listPane.Classes);
+
+        // Collapsing the inspector at normal width also gives ListPane enough room
+        window.Width = 1080;
+        vm.IsInspectorVisible = false;
+        window.CaptureRenderedFrame();
+        Assert.Contains("wide", listPane.Classes);
     }
 
     public void Dispose()

@@ -112,10 +112,17 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private void OpenInspector() => IsInspectorVisible = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSecretVisible))]
     private bool _isSecretRevealed;
 
     [ObservableProperty]
-    private string _revealedSecret = "••••••••••••••••";
+    [NotifyPropertyChangedFor(nameof(IsSecretVisible))]
+    private bool _isSecretPeeking;
+
+    public bool IsSecretVisible => IsSecretRevealed || IsSecretPeeking;
+
+    [ObservableProperty]
+    private string _revealedSecret = SecretMasker.FullMask;
 
     [ObservableProperty]
     private string? _clipboardCountdownText;
@@ -524,8 +531,10 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     partial void OnSelectedEntryChanged(EntryItemViewModel? value)
     {
+        _remaskTimer?.Stop();
         IsSecretRevealed = false;
-        RevealedSecret = "••••••••••••••••";
+        IsSecretPeeking = false;
+        RefreshDisplayedSecret();
         if (value != null)
         {
             IsInspectorVisible = true;
@@ -978,6 +987,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void Lock()
     {
+        _remaskTimer?.Stop();
+        IsSecretRevealed = false;
+        IsSecretPeeking = false;
         ResetRecoveryDialog();
         ResetRecoveryUnlock();
         _session?.Dispose();
@@ -985,6 +997,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         IsUnlocked = false;
         IsLocked = true;
         SelectedEntry = null;
+        RevealedSecret = SecretMasker.FullMask;
         FilteredEntries.Clear();
         UnlockPassphrase = string.Empty;
         UnlockErrorMessage = null;
@@ -993,12 +1006,16 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void SwitchVault()
     {
+        _remaskTimer?.Stop();
+        IsSecretRevealed = false;
+        IsSecretPeeking = false;
         _session?.Dispose();
         _session = null;
         IsUnlocked = false;
         IsFirstRun = false;
         IsLocked = true;
         SelectedEntry = null;
+        RevealedSecret = SecretMasker.FullMask;
         FilteredEntries.Clear();
         UnlockPassphrase = string.Empty;
         UnlockErrorMessage = null;
@@ -1094,14 +1111,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         if (IsSecretRevealed)
         {
-            IsSecretRevealed = false;
-            RevealedSecret = "••••••••••••••••";
             _remaskTimer?.Stop();
+            IsSecretRevealed = false;
+            RefreshDisplayedSecret();
         }
         else
         {
             IsSecretRevealed = true;
-            RevealedSecret = SelectedEntry.Entry.Secret;
+            RefreshDisplayedSecret();
 
             // Auto-remask after 10s
             _remaskTimer?.Stop();
@@ -1113,10 +1130,39 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             {
                 _remaskTimer?.Stop();
                 IsSecretRevealed = false;
-                RevealedSecret = "••••••••••••••••";
+                RefreshDisplayedSecret();
             };
             _remaskTimer.Start();
         }
+    }
+
+    [RelayCommand]
+    private void BeginPeekSecret()
+    {
+        if (SelectedEntry == null) return;
+        IsSecretPeeking = true;
+        RefreshDisplayedSecret();
+    }
+
+    [RelayCommand]
+    private void EndPeekSecret()
+    {
+        if (!IsSecretPeeking) return;
+        IsSecretPeeking = false;
+        RefreshDisplayedSecret();
+    }
+
+    private void RefreshDisplayedSecret()
+    {
+        if (SelectedEntry == null)
+        {
+            RevealedSecret = SecretMasker.FullMask;
+            return;
+        }
+
+        RevealedSecret = IsSecretVisible
+            ? SelectedEntry.Entry.Secret
+            : SecretMasker.MaskWithEnds(SelectedEntry.Entry.Secret);
     }
 
     [RelayCommand]
