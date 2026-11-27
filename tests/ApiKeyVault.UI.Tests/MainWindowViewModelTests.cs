@@ -40,6 +40,9 @@ public class MainWindowViewModelTests : IDisposable
         Assert.True(vm.IsFirstRun);
         Assert.False(vm.IsUnlocked);
         Assert.False(vm.IsLocked);
+        Assert.StartsWith("v", vm.AppVersionText);
+        Assert.Matches(@"^v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$", vm.AppVersionText);
+        Assert.DoesNotContain('+', vm.AppVersionText);
     }
 
     [Fact]

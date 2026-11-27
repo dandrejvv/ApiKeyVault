@@ -41,10 +41,16 @@ jobs:
         shell: pwsh
         run: |
           $rawTag = "${{ github.event.inputs.tag_name || github.ref_name }}"
-          # Strip leading 'v' if present (e.g. v1.0.0 -> 1.0.0)
-          $version = if ($rawTag.StartsWith('v')) { $rawTag.Substring(1) } else { $rawTag }
-          if (-not $version) {
-              $version = "0.1.0"
+          if ($rawTag -eq 'main' -or -not $rawTag) {
+              [xml]$props = Get-Content Directory.Build.props
+              $propVer = ($props.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
+              $propText = if ($propVer -is [System.Xml.XmlElement]) { $propVer.'#text' } else { [string]$propVer }
+              $version = ($propText -replace '-dev$', '').Trim()
+              $rawTag = "v$version"
+          }
+          else {
+              # Strip leading 'v' if present (e.g. v1.0.0 -> 1.0.0)
+              $version = if ($rawTag.StartsWith('v')) { $rawTag.Substring(1) } else { $rawTag }
           }
           Write-Host "Releasing version: $version"
           "version=$version" >> $env:GITHUB_OUTPUT

@@ -7,7 +7,7 @@
     <ServerGarbageCollection>false</ServerGarbageCollection>
     <!-- Suppress CA1416 platform warnings since platform detection is handled dynamically -->
     <NoWarn>$(NoWarn);CA1416</NoWarn>
-    <Version Condition="'$(Version)' == ''">0.1.0-dev</Version>
+    <Version Condition="'$(Version)' == ''">0.1.1-dev</Version>
     <Authors>Dandré Jansen van Vuuren</Authors>
     <Product>ApiKeyVault</Product>
   </PropertyGroup>

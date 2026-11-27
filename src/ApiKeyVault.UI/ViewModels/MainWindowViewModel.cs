@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ApiKeyVault.Core;
 using ApiKeyVault.Core.Cryptography;
 using ApiKeyVault.Core.Model;
 using ApiKeyVault.Core.Presets;
@@ -92,6 +93,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private string _activeVaultPath = string.Empty;
 
     public string ActiveVaultFileName => Path.GetFileName(ActiveVaultPath);
+
+    public string AppVersionText { get; } = AppVersion.GetDisplayVersion(typeof(MainWindowViewModel).Assembly);
 
     [ObservableProperty]
     private string _searchText = string.Empty;
