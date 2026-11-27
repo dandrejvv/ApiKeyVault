@@ -71,18 +71,66 @@ jobs:
         run: |
           ./scripts/publish.ps1 -Runtime portable -Zip -Version ${{ steps.get_version.outputs.version }}
 
+      - name: Extract Release Notes from CHANGELOG.md
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get_version.outputs.version }}"
+          $tagName = "${{ steps.get_version.outputs.tag_name }}"
+          $notesPath = "dist/release-notes.md"
+          New-Item -ItemType Directory -Force -Path "dist" | Out-Null
+
+          $bodyLines = [System.Collections.Generic.List[string]]::new()
+          if (Test-Path "CHANGELOG.md") {
+              $lines = Get-Content -Encoding utf8 "CHANGELOG.md"
+              $capturing = $false
+              $headingPattern = "^##\s+\[?v?$([regex]::Escape($version))\]?(\s|$|-)"
+              foreach ($line in $lines) {
+                  if ($line -match '^##\s+') {
+                      if ($capturing) { break }
+                      if ($line -match $headingPattern) {
+                          $capturing = $true
+                          continue
+                      }
+                  }
+                  elseif ($capturing) {
+                      $bodyLines.Add($line)
+                  }
+              }
+          }
+
+          $body = ($bodyLines -join "`n").Trim()
+          $prevTag = git describe --tags --abbrev=0 "$tagName^" 2>$null
+          if (-not $prevTag) {
+              $prevTag = git tag --sort=-v:refname | Where-Object { $_ -ne $tagName } | Select-Object -First 1
+          }
+
+          if (-not $body) {
+              $range = if ($prevTag) { "$prevTag..$tagName" } else { $tagName }
+              $commits = git log $range --no-merges --pretty=format:"- %s"
+              if ($commits) {
+                  $body = "### Changes`n`n" + ($commits -join "`n")
+              }
+          }
+
+          if ($prevTag -and $body -notmatch 'Full Changelog:') {
+              $body += "`n`n**Full Changelog**: https://github.com/${{ github.repository }}/compare/$prevTag...$tagName"
+          }
+
+          [IO.File]::WriteAllText($notesPath, $body, [Text.UTF8Encoding]::new($false))
+
       - name: Create GitHub Release & Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get_version.outputs.tag_name }}
           name: ApiKeyVault ${{ steps.get_version.outputs.tag_name }}
+          body_path: dist/release-notes.md
           files: |
             dist/ApiKeyVault-win-x64.zip
             dist/ApiKeyVault-win-arm64.zip
             dist/ApiKeyVault-portable.zip
             dist/win-x64/ApiKeyVault.exe
             dist/win-x64/akv.exe
-          generate_release_notes: true
+          generate_release_notes: false
           draft: false
           prerelease: ${{ contains(steps.get_version.outputs.tag_name, '-') }}
         env:
